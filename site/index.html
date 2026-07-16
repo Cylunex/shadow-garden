@@ -5,19 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Shadow Garden — Cylunex 的数字花园：博客、项目、美食与旅行">
 <title>Shadow Garden · Cylunex 的数字花园</title>
+<link rel="alternate" type="application/rss+xml" title="Shadow Garden" href="/feed.xml">
 <link rel="stylesheet" href="/assets/main.css">
+<script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
+<script src="/assets/js/garden.js" defer></script>
 </head>
 <body>
 
 <header>
   <div class="wrap nav">
-    <a class="logo" href="#">Shadow Garden</a>
+    <a class="logo" href="/">Shadow Garden</a>
     <nav class="nav-links">
-      <a href="#projects">项目</a>
-      <a href="#blog">博客</a>
-      <a href="#food">美食</a>
-      <a href="#travel">旅行</a>
-      <a href="#about">关于</a>
+      <a href="/projects/">项目</a>
+      <a href="/blog/">博客</a>
+      <a href="/moments/">说说</a>
+      <a href="/food/">美食</a>
+      <a href="/travel/">旅行</a>
+      <a href="/about/">关于</a>
+      <button class="theme-btn" id="theme-btn" title="切换主题">🌗</button>
     </nav>
   </div>
 </header>
@@ -29,90 +34,79 @@
     <h1>种一些代码，<br>也种一些<em>生活</em>。</h1>
     <p>这里是我的花园：写下的博客、做出来的项目、吃过的好味道、走过的远方，各自生长，不定期浇水。</p>
     <div class="actions">
-      <a class="btn btn-primary" href="#projects">逛逛项目</a>
-      <a class="btn btn-ghost" href="#blog">读读博客</a>
+      <a class="btn btn-primary" href="/projects/">逛逛项目</a>
+      <a class="btn btn-ghost" href="/blog/">读读博客</a>
     </div>
   </div>
 
   <section id="projects">
-    <div class="sec-head"><h2>项目</h2><span>做过和正在做的东西</span></div>
-    <div class="grid">
-      <div class="card">
-        <h3>Shadow Health</h3>
-        <p>个人健康与训练管理应用：跑步、力量循环、体测数据一站式记录与分析，自部署、数据自持。</p>
-        <div class="tags"><span class="tag">Python</span><span class="tag">PostgreSQL</span><span class="tag">PWA</span></div>
-      </div>
-      <div class="card">
-        <h3>Shadow Garden</h3>
-        <p>就是这个网站本身——一座慢慢生长的数字花园。</p>
-        <div class="tags"><span class="tag">HTML/CSS</span><span class="tag">nginx</span></div>
-      </div>
-      <div class="card placeholder">
-        <h3>下一个项目</h3>
-        <p>占位卡片——把这里换成你的下一个作品。</p>
-        <div class="tags"><span class="tag">Coming soon</span></div>
-      </div>
-    </div>
+    <div class="sec-head"><h2>项目</h2><span>做过和正在做的东西</span><a class="more" href="/projects/">全部 →</a></div>
+    <div class="grid" id="projects-box"><p class="state-note">加载中…</p></div>
   </section>
 
   <section id="blog">
-    <div class="sec-head"><h2>博客</h2><span>不定期更新</span></div>
-    <ul class="post-list">
-      <li><a href="#">Hello World：这座花园是怎么搭起来的（示例占位）</a><time>2026-07-15</time></li>
-      <li><a href="#">给 nginx 配 HTTPS 的几个小坑（示例占位）</a><time>2026-07-15</time></li>
-    </ul>
-    <p class="empty-note">占位条目。文章做成独立 HTML 放进 <code>/blog/</code> 目录，把链接填进来即可；多了再上静态站点生成器。</p>
+    <div class="sec-head"><h2>博客</h2><span>不定期更新</span><a class="more" href="/blog/">全部 →</a></div>
+    <ul class="post-list" id="posts-box"><li class="state-note">加载中…</li></ul>
+  </section>
+
+  <section id="moments">
+    <div class="sec-head"><h2>说说</h2><span>随手记下的碎碎念</span><a class="more" href="/moments/">全部 →</a></div>
+    <div id="moments-box"><p class="state-note">加载中…</p></div>
   </section>
 
   <section id="food">
-    <div class="sec-head"><h2>美食</h2><span>吃过的好味道</span></div>
-    <div class="grid">
-      <div class="card placeholder">
-        <div class="emoji">🍜</div>
-        <h3>第一碗面</h3>
-        <p>占位卡片——一张照片、一句点评、一个地点，就是一条美食记录。</p>
-        <div class="tags"><span class="tag">待开垦</span></div>
-      </div>
-      <div class="card placeholder">
-        <div class="emoji">🥘</div>
-        <h3>第一顿家常菜</h3>
-        <p>占位卡片——自己做的也算，翻车的更值得记。</p>
-        <div class="tags"><span class="tag">待开垦</span></div>
-      </div>
-    </div>
+    <div class="sec-head"><h2>美食</h2><span>吃过的好味道</span><a class="more" href="/food/">全部 →</a></div>
+    <div class="grid" id="food-box"><p class="state-note">加载中…</p></div>
   </section>
 
   <section id="travel">
-    <div class="sec-head"><h2>旅行</h2><span>走过的远方</span></div>
-    <ul class="post-list">
-      <li><a href="#">第一段旅程（示例占位）——目的地 · 几天 · 一句话总结</a><time>待记录</time></li>
-    </ul>
-    <p class="empty-note">占位条目。以后可以升级成带地图和相册的游记页。</p>
-  </section>
-
-  <section id="about">
-    <div class="sec-head"><h2>关于</h2></div>
-    <div class="about">
-      <div class="text">
-        <p><strong>Cylunex</strong>，业余开发者。喜欢自己动手把想法做成能用的东西：健康数据、自动化、自部署服务。这座花园跑在一台阿里云 ECS 上，由 nginx 浇水。</p>
-        <p style="margin-top:.8rem" class="links">
-          <!-- 需要的话在这里加 GitHub、邮箱等联系方式，例如：
-          <a href="https://github.com/xxx" target="_blank" rel="noopener">GitHub</a> -->
-        </p>
-      </div>
-    </div>
+    <div class="sec-head"><h2>旅行</h2><span>走过的远方</span><a class="more" href="/travel/">全部 →</a></div>
+    <ul class="post-list" id="trips-box"><li class="state-note">加载中…</li></ul>
   </section>
 
 </main>
 
 <footer>
   <div class="wrap">
-    © 2026 Cylunex · Shadow Garden
+    © 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a> · <a href="/admin/">后台</a>
     <br>
     <!-- 备案号下来后替换成：<a href="https://beian.miit.gov.cn" target="_blank" rel="noopener">X ICP备XXXXXXXX号</a> -->
     <span>ICP 备案审核中</span>
   </div>
 </footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const G = window.Garden;
+  const boxes = {
+    projects: document.getElementById("projects-box"),
+    posts: document.getElementById("posts-box"),
+    moments: document.getElementById("moments-box"),
+    food: document.getElementById("food-box"),
+    trips: document.getElementById("trips-box"),
+  };
+  try {
+    const data = await G.api("/api/summary");
+    boxes.projects.innerHTML = data.projects.length
+      ? data.projects.map(G.projectCard).join("")
+      : '<p class="state-note">还没有项目，去后台种一个。</p>';
+    boxes.posts.innerHTML = data.posts.length
+      ? data.posts.map(G.postItem).join("")
+      : '<li class="state-note">还没有文章。</li>';
+    boxes.moments.innerHTML = data.moments.length
+      ? data.moments.map((m) => G.momentCard(m, true)).join("")
+      : '<p class="state-note">还没有说说。</p>';
+    boxes.food.innerHTML = data.food.length
+      ? data.food.map(G.foodCard).join("")
+      : '<p class="state-note">还没有美食记录。</p>';
+    boxes.trips.innerHTML = data.trips.length
+      ? data.trips.map(G.tripItem).join("")
+      : '<li class="state-note">还没有游记。</li>';
+  } catch (e) {
+    Object.values(boxes).forEach((el) => G.stateNote(el, "内容加载失败：" + e.message, true));
+  }
+});
+</script>
 
 </body>
 </html>

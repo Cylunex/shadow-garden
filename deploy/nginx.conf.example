@@ -1,0 +1,32 @@
+# Shadow Garden 的 nginx 站点配置示例
+# 放到 /etc/nginx/sites-available/ 或 conf.d/，按实际域名与路径修改。
+server {
+    listen 80;
+    server_name example.com;          # 换成你的域名
+
+    root /var/www/shadow-garden;      # = deploy.env 的 DEPLOY_WEBROOT
+    index index.html;
+
+    # 上传图片限制，与后端 GARDEN_MAX_UPLOAD_MB 对齐（留点余量）
+    client_max_body_size 10m;
+
+    # API 与 RSS/sitemap 反代给 uvicorn
+    location ~ ^/(api/|feed\.xml$|sitemap\.xml$) {
+        proxy_pass http://127.0.0.1:8300;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 上传的图片由 nginx 直接服务（= GARDEN_DATA_DIR/uploads）
+    location /uploads/ {
+        alias /var/lib/shadow-garden/uploads/;
+        expires 30d;
+    }
+
+    # 静态站
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

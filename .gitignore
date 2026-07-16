@@ -2,3 +2,10 @@
 *.log
 node_modules/
 scripts/deploy.env
+
+# 后端本地环境（数据与密钥不入库）
+server/.venv/
+server/data/
+server/.env
+__pycache__/
+.pytest_cache/

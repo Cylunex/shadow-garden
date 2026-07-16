@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>博客 · Shadow Garden</title>
+<link rel="alternate" type="application/rss+xml" title="Shadow Garden" href="/feed.xml">
+<link rel="stylesheet" href="/assets/main.css">
+<script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
+<script src="/assets/js/garden.js" defer></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="/">Shadow Garden</a>
+    <nav class="nav-links">
+      <a href="/projects/">项目</a>
+      <a href="/blog/">博客</a>
+      <a href="/moments/">说说</a>
+      <a href="/food/">美食</a>
+      <a href="/travel/">旅行</a>
+      <a href="/about/">关于</a>
+      <button class="theme-btn" id="theme-btn" title="切换主题">🌗</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-head">
+    <h1>博客</h1>
+    <p>不定期更新的想法、笔记和踩坑记录。</p>
+  </div>
+  <input class="search-box" id="search" type="search" placeholder="搜索标题、摘要或正文…">
+  <div class="filter-tags" id="tag-filter"></div>
+  <div id="list"><p class="state-note">加载中…</p></div>
+</main>
+
+<footer>
+  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a></div>
+</footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const G = window.Garden;
+  const list = document.getElementById("list");
+  const filterBox = document.getElementById("tag-filter");
+  const searchBox = document.getElementById("search");
+  let posts = [];
+  let activeTag = "";
+
+  function groupedHtml(items) {
+    // 按年归档
+    let html = "", lastYear = "";
+    for (const p of items) {
+      const year = (p.published_at || p.created_at || "").slice(0, 4) || "未注明";
+      if (year !== lastYear) {
+        if (lastYear) html += "</ul>";
+        html += '<h2 class="year-head">' + year + '</h2><ul class="post-list">';
+        lastYear = year;
+      }
+      html += G.postItem(p);
+    }
+    return html ? html + "</ul>" : "";
+  }
+
+  function render() {
+    const shown = activeTag ? posts.filter((p) => p.tags.includes(activeTag)) : posts;
+    list.innerHTML = shown.length
+      ? groupedHtml(shown)
+      : '<p class="state-note">这个标签下还没有文章。</p>';
+    const allTags = [...new Set(posts.flatMap((p) => p.tags))];
+    filterBox.innerHTML = allTags.length
+      ? ['<button class="tag' + (activeTag ? "" : " active") + '" data-tag="">全部</button>']
+          .concat(allTags.map((t) =>
+            '<button class="tag' + (t === activeTag ? " active" : "") + '" data-tag="' + G.esc(t) + '">' + G.esc(t) + "</button>"))
+          .join("")
+      : "";
+  }
+
+  filterBox.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-tag]");
+    if (!btn) return;
+    activeTag = btn.dataset.tag;
+    render();
+  });
+
+  let searchTimer = null;
+  searchBox.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+      const q = searchBox.value.trim();
+      filterBox.hidden = !!q;
+      if (!q) { render(); return; }
+      try {
+        const hits = (await G.api("/api/search?q=" + encodeURIComponent(q))).posts;
+        list.innerHTML = hits.length
+          ? '<ul class="post-list">' + hits.map(G.postItem).join("") + "</ul>"
+          : '<p class="state-note">没有找到「' + G.esc(q) + '」相关的文章。</p>';
+      } catch (e) {
+        G.stateNote(list, "搜索失败：" + e.message, true);
+      }
+    }, 250);
+  });
+
+  try {
+    posts = (await G.api("/api/posts")).items;
+    render();
+    if (!posts.length) list.innerHTML = '<p class="state-note">还没有文章，去后台写第一篇。</p>';
+  } catch (e) {
+    G.stateNote(list, "加载失败：" + e.message, true);
+  }
+});
+</script>
+
+</body>
+</html>

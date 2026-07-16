@@ -1,0 +1,80 @@
+/* 后台专用样式，叠在 main.css 之上 */
+.admin-main { padding: 2rem 0 4rem; min-height: 70vh; }
+
+.login-card {
+  max-width: 380px; margin: 14vh auto 0; padding: 2rem;
+  background: var(--bg-card); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--shadow);
+}
+.login-card h1 { font-size: 1.3rem; margin-bottom: 1.2rem; }
+
+.admin-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 1.8rem; }
+.admin-tabs button {
+  font: inherit; font-size: .92rem; cursor: pointer;
+  padding: .4em 1.1em; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-card); color: var(--text-dim);
+}
+.admin-tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.admin-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.admin-bar h2 { font-size: 1.2rem; }
+
+.item-list { list-style: none; }
+.item-list li {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .8rem .2rem; border-bottom: 1px dashed var(--line);
+}
+.item-list .grow { flex: 1; min-width: 0; }
+.item-list .title { font-weight: 600; }
+.item-list .meta { font-size: .82rem; }
+.badge {
+  font-size: .72rem; border-radius: 999px; padding: .1em .7em;
+  background: color-mix(in srgb, var(--accent-2) 18%, transparent); color: var(--accent-2);
+}
+.badge.draft { background: color-mix(in srgb, #e8a33d 18%, transparent); color: #b97f1e; }
+
+button.btn, .btn { cursor: pointer; border: none; font: inherit; font-size: .95rem; }
+.btn-sm {
+  font: inherit; font-size: .82rem; cursor: pointer;
+  padding: .25em .9em; border-radius: 7px;
+  border: 1px solid var(--line); background: var(--bg-card); color: var(--text);
+}
+.btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm.danger:hover { border-color: #c0564f; color: #c0564f; }
+
+/* 表单 */
+.form-card {
+  background: var(--bg-card); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--shadow); padding: 1.6rem;
+}
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.form-grid .full { grid-column: 1 / -1; }
+.field label { display: block; font-size: .85rem; color: var(--text-dim); margin-bottom: .3rem; }
+.field input, .field textarea, .field select {
+  width: 100%; font: inherit; font-size: .95rem; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  padding: .5em .8em;
+}
+.field textarea { resize: vertical; line-height: 1.6; }
+.field input:focus, .field textarea:focus, .field select:focus {
+  outline: none; border-color: var(--accent);
+}
+.row-flex { display: flex; gap: .5rem; }
+.row-flex input { flex: 1; }
+.md-tools { display: flex; gap: .5rem; margin-top: .4rem; }
+.md-preview {
+  margin-top: .6rem; padding: 1rem 1.2rem;
+  border: 1px dashed var(--line); border-radius: 10px;
+}
+.form-actions { display: flex; gap: .8rem; margin-top: 1.4rem; }
+
+/* 提示条 */
+#toast {
+  position: fixed; left: 50%; bottom: 2rem; transform: translateX(-50%);
+  background: var(--text); color: var(--bg); font-size: .9rem;
+  padding: .55em 1.4em; border-radius: 999px; box-shadow: var(--shadow);
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+  z-index: 99; max-width: 90vw;
+}
+#toast.show { opacity: 1; }
+#toast.error { background: #c0564f; color: #fff; }

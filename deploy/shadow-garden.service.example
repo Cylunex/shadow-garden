@@ -1,0 +1,24 @@
+# Shadow Garden 后端 systemd 服务示例
+# 用法（服务器上）：
+#   sudo cp shadow-garden.service.example /etc/systemd/system/shadow-garden.service
+#   sudo mkdir -p /var/lib/shadow-garden && sudo chown www-data:www-data /var/lib/shadow-garden
+#   sudo install -m 600 -o root /dev/null /etc/shadow-garden.env   # 写入 GARDEN_ADMIN_PASSWORD 等
+#   sudo systemctl daemon-reload && sudo systemctl enable --now shadow-garden
+[Unit]
+Description=Shadow Garden API (FastAPI + SQLite)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/shadow-garden/server
+# /etc/shadow-garden.env 内容示例：
+#   GARDEN_ADMIN_PASSWORD=一串足够长的口令
+#   GARDEN_DATA_DIR=/var/lib/shadow-garden
+EnvironmentFile=/etc/shadow-garden.env
+ExecStart=/opt/shadow-garden/server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8300
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

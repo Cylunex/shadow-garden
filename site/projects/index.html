@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目 · Shadow Garden</title>
+<link rel="stylesheet" href="/assets/main.css">
+<script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
+<script src="/assets/js/garden.js" defer></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="/">Shadow Garden</a>
+    <nav class="nav-links">
+      <a href="/projects/">项目</a>
+      <a href="/blog/">博客</a>
+      <a href="/moments/">说说</a>
+      <a href="/food/">美食</a>
+      <a href="/travel/">旅行</a>
+      <a href="/about/">关于</a>
+      <button class="theme-btn" id="theme-btn" title="切换主题">🌗</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-head">
+    <h1>项目</h1>
+    <p>做过和正在做的东西，自部署优先，数据自持。</p>
+  </div>
+  <section style="border-top:none;padding-top:2rem">
+    <div class="grid" id="list"><p class="state-note">加载中…</p></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a></div>
+</footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const G = window.Garden;
+  const list = document.getElementById("list");
+  try {
+    const items = (await G.api("/api/projects")).items;
+    list.innerHTML = items.length
+      ? items.map(G.projectCard).join("")
+      : '<p class="state-note">还没有项目，去后台种一个。</p>';
+  } catch (e) {
+    G.stateNote(list, "加载失败：" + e.message, true);
+  }
+});
+</script>
+
+</body>
+</html>

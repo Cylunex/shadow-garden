@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>后台 · Shadow Garden</title>
+<link rel="stylesheet" href="/assets/main.css">
+<script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
+<link rel="stylesheet" href="/assets/admin.css">
+<script src="/assets/js/garden.js" defer></script>
+<script src="/assets/js/admin.js" defer></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="/">Shadow Garden</a>
+    <nav class="nav-links">
+      <a href="/" target="_blank" rel="noopener">查看站点 ↗</a>
+      <a href="#" id="logout-link" hidden>退出登录</a>
+      <button class="theme-btn" id="theme-btn" title="切换主题">🌗</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap admin-main">
+
+  <!-- 登录 -->
+  <div id="login-view" hidden>
+    <form class="login-card" id="login-form">
+      <h1>花园后台</h1>
+      <div class="field">
+        <label for="password">管理口令</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">进入</button>
+      </div>
+      <p class="state-note error" id="login-error" hidden></p>
+    </form>
+  </div>
+
+  <!-- 主界面 -->
+  <div id="main-view" hidden>
+    <div class="admin-tabs" id="tabs"></div>
+    <div id="panel"></div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+<input type="file" id="file-input" accept="image/*" hidden>
+
+</body>
+</html>

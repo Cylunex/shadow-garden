@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "garden",
+      "runtimeExecutable": "server/.venv/bin/uvicorn",
+      "runtimeArgs": ["app.main:app", "--app-dir", "server", "--port", "8300"],
+      "port": 8300
+    }
+  ]
+}

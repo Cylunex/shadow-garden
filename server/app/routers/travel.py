@@ -1,0 +1,99 @@
+import json
+import sqlite3
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from ..auth import require_admin
+from ..db import get_db, now_iso
+from ..rendering import render_markdown
+
+router = APIRouter(prefix="/api/trips", tags=["travel"])
+
+
+class TripIn(BaseModel):
+    title: str = Field(min_length=1)
+    destination: str = ""
+    start_date: str = ""   # YYYY-MM-DD
+    end_date: str = ""
+    summary: str = ""
+    content_md: str = ""
+    photos: List[str] = []
+
+
+def _serialize(row: sqlite3.Row, with_content: bool = False) -> dict:
+    trip = {
+        "id": row["id"],
+        "title": row["title"],
+        "destination": row["destination"],
+        "start_date": row["start_date"],
+        "end_date": row["end_date"],
+        "summary": row["summary"],
+        "photos": json.loads(row["photos"] or "[]"),
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+    if with_content:
+        trip["content_md"] = row["content_md"]
+        trip["content_html"] = row["content_html"]
+    return trip
+
+
+@router.get("")
+def list_trips(conn: sqlite3.Connection = Depends(get_db)):
+    rows = conn.execute(
+        "SELECT * FROM trips ORDER BY CASE WHEN start_date = '' THEN created_at ELSE start_date END DESC"
+    ).fetchall()
+    return {"items": [_serialize(r) for r in rows]}
+
+
+@router.get("/{trip_id}")
+def get_trip(trip_id: int, conn: sqlite3.Connection = Depends(get_db)):
+    row = conn.execute("SELECT * FROM trips WHERE id = ?", (trip_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "游记不存在")
+    return _serialize(row, with_content=True)
+
+
+@router.post("", dependencies=[Depends(require_admin)], status_code=201)
+def create_trip(body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
+    now = now_iso()
+    cur = conn.execute(
+        """INSERT INTO trips (title, destination, start_date, end_date, summary,
+                              content_md, content_html, photos, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            body.title, body.destination, body.start_date, body.end_date,
+            body.summary, body.content_md, render_markdown(body.content_md),
+            json.dumps(body.photos, ensure_ascii=False), now, now,
+        ),
+    )
+    row = conn.execute("SELECT * FROM trips WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return _serialize(row, with_content=True)
+
+
+@router.put("/{trip_id}", dependencies=[Depends(require_admin)])
+def update_trip(trip_id: int, body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.execute(
+        """UPDATE trips SET title=?, destination=?, start_date=?, end_date=?,
+                            summary=?, content_md=?, content_html=?, photos=?, updated_at=?
+           WHERE id=?""",
+        (
+            body.title, body.destination, body.start_date, body.end_date,
+            body.summary, body.content_md, render_markdown(body.content_md),
+            json.dumps(body.photos, ensure_ascii=False), now_iso(), trip_id,
+        ),
+    )
+    if cur.rowcount == 0:
+        raise HTTPException(404, "游记不存在")
+    row = conn.execute("SELECT * FROM trips WHERE id = ?", (trip_id,)).fetchone()
+    return _serialize(row, with_content=True)
+
+
+@router.delete("/{trip_id}", dependencies=[Depends(require_admin)])
+def delete_trip(trip_id: int, conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.execute("DELETE FROM trips WHERE id = ?", (trip_id,))
+    if cur.rowcount == 0:
+        raise HTTPException(404, "游记不存在")
+    return {"ok": True}
