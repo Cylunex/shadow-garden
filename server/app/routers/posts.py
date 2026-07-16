@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from typing_extensions import Literal
 
 from ..auth import optional_admin, require_admin
-from ..db import get_db, now_iso, tags_from_json, tags_to_json
+from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 from ..rendering import reading_minutes, render_markdown, slugify, word_count
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
@@ -120,14 +120,14 @@ def create_post(body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         """INSERT INTO posts (slug, title, summary, content_md, content_html,
                               tags, status, published_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             slug, body.title, body.summary, body.content_md,
             render_markdown(body.content_md), tags_to_json(body.tags),
             body.status, published_at, now, now,
         ),
     )
-    row = conn.execute("SELECT * FROM posts WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM posts WHERE id = ?", (inserted_id(cur),)).fetchone()
     return _serialize(row, with_content=True)
 
 

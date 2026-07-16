@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from typing_extensions import Literal
 
 from ..auth import require_admin
-from ..db import get_db, now_iso, tags_from_json, tags_to_json
+from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -53,13 +53,13 @@ def create_project(body: ProjectIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         """INSERT INTO projects (name, description, tags, link, repo, status,
                                  sort_order, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             body.name, body.description, tags_to_json(body.tags), body.link,
             body.repo, body.status, body.sort_order, now, now,
         ),
     )
-    row = conn.execute("SELECT * FROM projects WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM projects WHERE id = ?", (inserted_id(cur),)).fetchone()
     return _serialize(row)
 
 

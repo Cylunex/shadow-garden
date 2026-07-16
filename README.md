@@ -4,7 +4,8 @@ Cylunex 的数字花园 —— 前后端完整的个人网站：博客、项目�
 
 ## 技术栈与功能
 
-- **后端**：FastAPI + SQLite（单文件数据库，数据自持），Markdown 服务端渲染 + pygments 代码高亮，口令登录 + Bearer 会话
+- **后端**：FastAPI；数据库双后端——本地开发/测试默认 SQLite（零依赖），生产配 `GARDEN_DB_URL` 走 PostgreSQL；Markdown 服务端渲染 + pygments 代码高亮
+- **鉴权**：公开只读，新增/编辑/删除需口令登录换 Bearer 会话；配 `GARDEN_REDIS_URL` 后会话存 Redis（原生 TTL），并启用登录失败限流（每 IP 10 次 / 10 分钟）
 - **前端**：无构建的纯 HTML/CSS/JS，改完即部署；页面通过 `/api` 拉取内容；深色/浅色主题手动切换（默认跟随系统）
 - **博客体验**：站内全文搜索、标签筛选、按年归档、目录 TOC、字数/阅读时长、浏览计数、上一篇/下一篇
 - **订阅与 SEO**：RSS（`/feed.xml`）、sitemap（`/sitemap.xml`）、robots.txt
@@ -47,7 +48,7 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 
 打开 <http://localhost:8300>（uvicorn 本地直接托管 `site/`），后台在 `/admin/`。
 
-跑测试：`.venv/bin/python -m pytest tests/`
+跑测试：`.venv/bin/python -m pytest tests/`（默认 SQLite；设 `PG_TEST_URL` / `REDIS_TEST_URL` 可整体切到生产同款后端跑同一套用例）
 
 ## API 一览
 

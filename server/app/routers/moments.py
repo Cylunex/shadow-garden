@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ..auth import require_admin
-from ..db import get_db, now_iso
+from ..db import get_db, inserted_id, now_iso
 from ..rendering import render_markdown
 
 router = APIRouter(prefix="/api/moments", tags=["moments"])
@@ -39,10 +39,10 @@ def list_moments(
 def create_moment(body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
-        "INSERT INTO moments (content_md, content_html, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO moments (content_md, content_html, created_at, updated_at) VALUES (?, ?, ?, ?) RETURNING id",
         (body.content_md, render_markdown(body.content_md), now, now),
     )
-    row = conn.execute("SELECT * FROM moments WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM moments WHERE id = ?", (inserted_id(cur),)).fetchone()
     return _serialize(row)
 
 

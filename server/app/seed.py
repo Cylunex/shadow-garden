@@ -42,8 +42,8 @@ PROJECTS = [
     },
     {
         "name": "Shadow Garden",
-        "description": "就是这个网站本身——FastAPI + SQLite 后端，无构建静态前端，一座慢慢生长的数字花园。",
-        "tags": ["FastAPI", "SQLite", "nginx"],
+        "description": "就是这个网站本身——FastAPI 后端（PostgreSQL + Redis），无构建静态前端，一座慢慢生长的数字花园。",
+        "tags": ["FastAPI", "PostgreSQL", "Redis"],
         "status": "active",
         "sort_order": 9,
     },
@@ -95,12 +95,17 @@ ABOUT_MD = (
 )
 
 
+def _count(conn, table: str) -> int:
+    # 两个后端的行对象都按列名取值（psycopg 的 dict 行没有位置下标）
+    return conn.execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()["n"]
+
+
 def seed() -> None:
     init_db()
     conn = connect()
     now = now_iso()
     try:
-        if conn.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0:
+        if _count(conn, "posts") == 0:
             for p in POSTS:
                 conn.execute(
                     """INSERT INTO posts (slug, title, summary, content_md, content_html,
@@ -114,7 +119,7 @@ def seed() -> None:
                 )
             print(f"posts: 插入 {len(POSTS)} 条")
 
-        if conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0] == 0:
+        if _count(conn, "projects") == 0:
             for p in PROJECTS:
                 conn.execute(
                     """INSERT INTO projects (name, description, tags, link, repo, status,
@@ -127,7 +132,7 @@ def seed() -> None:
                 )
             print(f"projects: 插入 {len(PROJECTS)} 条")
 
-        if conn.execute("SELECT COUNT(*) FROM food").fetchone()[0] == 0:
+        if _count(conn, "food") == 0:
             for f in FOOD:
                 conn.execute(
                     """INSERT INTO food (title, emoji, rating, location, review, photo,
@@ -140,7 +145,7 @@ def seed() -> None:
                 )
             print(f"food: 插入 {len(FOOD)} 条")
 
-        if conn.execute("SELECT COUNT(*) FROM trips").fetchone()[0] == 0:
+        if _count(conn, "trips") == 0:
             for t in TRIPS:
                 conn.execute(
                     """INSERT INTO trips (title, destination, start_date, end_date, summary,
@@ -154,7 +159,7 @@ def seed() -> None:
                 )
             print(f"trips: 插入 {len(TRIPS)} 条")
 
-        if conn.execute("SELECT COUNT(*) FROM moments").fetchone()[0] == 0:
+        if _count(conn, "moments") == 0:
             for m in MOMENTS:
                 conn.execute(
                     "INSERT INTO moments (content_md, content_html, created_at, updated_at) VALUES (?, ?, ?, ?)",
@@ -162,7 +167,7 @@ def seed() -> None:
                 )
             print(f"moments: 插入 {len(MOMENTS)} 条")
 
-        if conn.execute("SELECT COUNT(*) FROM about").fetchone()[0] == 0:
+        if _count(conn, "about") == 0:
             conn.execute(
                 "INSERT INTO about (id, content_md, content_html, links, updated_at) VALUES (1, ?, ?, '[]', ?)",
                 (ABOUT_MD, render_markdown(ABOUT_MD), now),

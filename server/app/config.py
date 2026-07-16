@@ -38,6 +38,16 @@ class Settings:
         return self.data_dir / "uploads"
 
     @property
+    def db_url(self) -> str:
+        """postgresql://user:pw@host/db 走 PostgreSQL；留空用本地 SQLite。"""
+        return os.environ.get("GARDEN_DB_URL", "")
+
+    @property
+    def redis_url(self) -> str:
+        """redis://host:port/db；配置后会话与登录限流走 Redis，留空用数据库表。"""
+        return os.environ.get("GARDEN_REDIS_URL", "")
+
+    @property
     def admin_password(self) -> str:
         return os.environ.get("GARDEN_ADMIN_PASSWORD", "")
 

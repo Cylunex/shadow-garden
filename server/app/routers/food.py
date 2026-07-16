@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..auth import require_admin
-from ..db import get_db, now_iso, tags_from_json, tags_to_json
+from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 
 router = APIRouter(prefix="/api/food", tags=["food"])
 
@@ -51,13 +51,13 @@ def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         """INSERT INTO food (title, emoji, rating, location, review, photo,
                              tags, eaten_on, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             body.title, body.emoji, body.rating, body.location, body.review,
             body.photo, tags_to_json(body.tags), body.eaten_on, now, now,
         ),
     )
-    row = conn.execute("SELECT * FROM food WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM food WHERE id = ?", (inserted_id(cur),)).fetchone()
     return _serialize(row)
 
 

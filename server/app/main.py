@@ -77,17 +77,20 @@ def search(
     q = q.strip()
     if not q:
         return {"posts": [], "trips": []}
-    like = "%" + q.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_") + "%"
+    # lower() 两侧：SQLite 的 LIKE 本身不分大小写，PG 分——统一行为
+    like = "%" + q.lower().replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_") + "%"
     post_rows = conn.execute(
         r"""SELECT slug, title, summary, published_at, tags FROM posts
             WHERE status = 'published'
-              AND (title LIKE ? ESCAPE '\' OR summary LIKE ? ESCAPE '\' OR content_md LIKE ? ESCAPE '\')
+              AND (lower(title) LIKE ? ESCAPE '\' OR lower(summary) LIKE ? ESCAPE '\'
+                   OR lower(content_md) LIKE ? ESCAPE '\')
             ORDER BY published_at DESC LIMIT 20""",
         (like, like, like),
     ).fetchall()
     trip_rows = conn.execute(
         r"""SELECT id, title, destination, summary, start_date FROM trips
-            WHERE title LIKE ? ESCAPE '\' OR summary LIKE ? ESCAPE '\' OR content_md LIKE ? ESCAPE '\'
+            WHERE lower(title) LIKE ? ESCAPE '\' OR lower(summary) LIKE ? ESCAPE '\'
+                  OR lower(content_md) LIKE ? ESCAPE '\'
             ORDER BY start_date DESC LIMIT 20""",
         (like, like, like),
     ).fetchall()

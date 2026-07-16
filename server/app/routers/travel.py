@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..auth import require_admin
-from ..db import get_db, now_iso
+from ..db import get_db, inserted_id, now_iso
 from ..rendering import render_markdown
 
 router = APIRouter(prefix="/api/trips", tags=["travel"])
@@ -62,14 +62,14 @@ def create_trip(body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         """INSERT INTO trips (title, destination, start_date, end_date, summary,
                               content_md, content_html, photos, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             body.title, body.destination, body.start_date, body.end_date,
             body.summary, body.content_md, render_markdown(body.content_md),
             json.dumps(body.photos, ensure_ascii=False), now, now,
         ),
     )
-    row = conn.execute("SELECT * FROM trips WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM trips WHERE id = ?", (inserted_id(cur),)).fetchone()
     return _serialize(row, with_content=True)
 
 
