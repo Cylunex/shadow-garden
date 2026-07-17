@@ -100,6 +100,7 @@
         { name: "location", label: "地点", type: "text" },
         { name: "photo", label: "照片", type: "image" },
         { name: "tags", label: "标签（逗号分隔）", type: "tags" },
+        { name: "geo", label: "坐标（可选，填了会出现在美食地图上）", type: "geo", full: true },
         { name: "review", label: "点评", type: "textarea", rows: 3, full: true },
       ],
     },
@@ -115,6 +116,7 @@
         { name: "start_date", label: "开始日期", type: "date" },
         { name: "end_date", label: "结束日期", type: "date" },
         { name: "summary", label: "一句话总结", type: "text", full: true },
+        { name: "geo", label: "坐标（可选，填了会出现在旅行地图上）", type: "geo", full: true },
         { name: "photos", label: "相册（每行一个图片 URL）", type: "images", full: true },
         { name: "content_md", label: "游记正文（Markdown）", type: "md", full: true },
       ],
@@ -166,6 +168,19 @@
       case "tags":
         control = '<input type="text" name="' + f.name + '" value="' + G.esc((v || []).join(", ")) + '" placeholder="如：nginx, 运维">';
         break;
+      case "geo": {
+        const g = value || {};
+        const la = g.lat == null ? "" : g.lat;
+        const ln = g.lng == null ? "" : g.lng;
+        control =
+          '<div class="row-flex">' +
+          '<input type="text" name="lat" value="' + G.esc(la) + '" placeholder="纬度，如 36.067">' +
+          '<input type="text" name="lng" value="' + G.esc(ln) + '" placeholder="经度，如 120.383">' +
+          '<button type="button" class="btn-sm" data-geo-pick>地图选点</button>' +
+          "</div>" +
+          '<div class="geo-map map-box small" hidden style="margin:.6rem 0 0"></div>';
+        break;
+      }
       case "image":
         control =
           '<div class="row-flex">' +
@@ -188,6 +203,13 @@
   function collectForm(form, fields) {
     const data = {};
     for (const f of fields) {
+      if (f.type === "geo") {
+        const lat = parseFloat(form.querySelector('[name="lat"]').value);
+        const lng = parseFloat(form.querySelector('[name="lng"]').value);
+        data.lat = isNaN(lat) ? null : lat;
+        data.lng = isNaN(lng) ? null : lng;
+        continue;
+      }
       const el = form.querySelector('[name="' + f.name + '"]');
       let v = el.value;
       if (f.type === "tags") v = v.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
@@ -306,7 +328,10 @@
     panel.innerHTML =
       '<div class="admin-bar"><h2>' + (item ? "编辑" : "新建") + m.label + "</h2></div>" +
       '<form class="form-card" id="edit-form"><div class="form-grid">' +
-      m.fields.map((f) => fieldHtml(f, full ? full[f.name] : undefined)).join("") +
+      m.fields.map((f) => fieldHtml(
+        f,
+        full ? (f.type === "geo" ? { lat: full.lat, lng: full.lng } : full[f.name]) : undefined
+      )).join("") +
       "</div>" +
       '<div class="form-actions">' +
       '<button class="btn btn-primary" type="submit">保存</button>' +
@@ -393,6 +418,36 @@
     }
 
     const form = e.target.closest("form");
+    const geoPick = e.target.closest("[data-geo-pick]");
+    if (geoPick) {
+      const mapDiv = geoPick.closest(".field").querySelector(".geo-map");
+      mapDiv.hidden = !mapDiv.hidden;
+      if (mapDiv.hidden) return;
+      const latEl = form.querySelector('[name="lat"]');
+      const lngEl = form.querySelector('[name="lng"]');
+      if (!mapDiv._map) {
+        const has = latEl.value !== "" && lngEl.value !== "";
+        const map = GardenMap.create(mapDiv, {
+          scrollWheelZoom: true,
+          center: has ? [parseFloat(latEl.value), parseFloat(lngEl.value)] : undefined,
+          zoom: has ? 11 : undefined,
+        });
+        let marker = has
+          ? L.marker([parseFloat(latEl.value), parseFloat(lngEl.value)]).addTo(map)
+          : null;
+        map.on("click", (ev) => {
+          const lat = +ev.latlng.lat.toFixed(6);
+          const lng = +ev.latlng.lng.toFixed(6);
+          latEl.value = lat;
+          lngEl.value = lng;
+          if (marker) marker.setLatLng([lat, lng]);
+          else marker = L.marker([lat, lng]).addTo(map);
+        });
+        mapDiv._map = map;
+      }
+      setTimeout(() => mapDiv._map.invalidateSize(), 0);
+      return;
+    }
     const mdPreview = e.target.closest("[data-md-preview]");
     if (mdPreview) { toggleMdPreview(form, mdPreview.dataset.mdPreview); return; }
 

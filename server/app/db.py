@@ -48,6 +48,8 @@ _TABLES = {
   photo      TEXT NOT NULL DEFAULT '',
   tags       TEXT NOT NULL DEFAULT '[]',
   eaten_on   TEXT NOT NULL DEFAULT '',
+  lat        DOUBLE PRECISION,
+  lng        DOUBLE PRECISION,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 """,
@@ -60,6 +62,8 @@ _TABLES = {
   content_md   TEXT NOT NULL DEFAULT '',
   content_html TEXT NOT NULL DEFAULT '',
   photos       TEXT NOT NULL DEFAULT '[]',
+  lat          DOUBLE PRECISION,
+  lng          DOUBLE PRECISION,
   created_at   TEXT NOT NULL,
   updated_at   TEXT NOT NULL
 """,
@@ -137,14 +141,25 @@ def connect():
     return conn
 
 
+_MIGRATIONS = [
+    ("posts", "views", "INTEGER NOT NULL DEFAULT 0"),
+    ("food", "lat", "DOUBLE PRECISION"),
+    ("food", "lng", "DOUBLE PRECISION"),
+    ("trips", "lat", "DOUBLE PRECISION"),
+    ("trips", "lng", "DOUBLE PRECISION"),
+]
+
+
 def _migrate(conn) -> None:
     """已有库的增量迁移：老表补新列（幂等）。"""
     if is_pg():
-        conn.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS views INTEGER NOT NULL DEFAULT 0")
+        for table, col, decl in _MIGRATIONS:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {decl}")
         return
-    post_cols = {r["name"] for r in conn.execute("PRAGMA table_info(posts)")}
-    if "views" not in post_cols:
-        conn.execute("ALTER TABLE posts ADD COLUMN views INTEGER NOT NULL DEFAULT 0")
+    for table, col, decl in _MIGRATIONS:
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if col not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
 
 def init_db() -> None:

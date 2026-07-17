@@ -5,8 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>旅行 · Shadow Garden</title>
 <link rel="stylesheet" href="/assets/main.css">
+<link rel="stylesheet" href="/assets/vendor/leaflet/leaflet.css">
 <script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
 <script src="/assets/js/garden.js" defer></script>
+<script src="/assets/vendor/leaflet/leaflet.js" defer></script>
+<script src="/assets/js/map.js" defer></script>
 </head>
 <body>
 
@@ -30,6 +33,7 @@
     <h1>旅行</h1>
     <p>走过的远方，按时间倒序生长。</p>
   </div>
+  <div class="map-box" id="map" hidden></div>
   <ul class="post-list" id="list" style="margin-top:1.5rem"><li class="state-note">加载中…</li></ul>
 </main>
 
@@ -46,6 +50,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     list.innerHTML = items.length
       ? items.map(G.tripItem).join("")
       : '<li class="state-note">还没有游记，下一段旅程见。</li>';
+
+    // 旅行地图：有坐标的游记落点
+    const geo = items.filter((t) => t.lat != null && t.lng != null);
+    if (geo.length) {
+      const mapEl = document.getElementById("map");
+      mapEl.hidden = false;
+      const map = GardenMap.create(mapEl);
+      GardenMap.markers(map, geo.map((t) => ({
+        lat: t.lat, lng: t.lng,
+        html: '<b><a href="/travel/trip.html?id=' + t.id + '">' + G.esc(t.title) + "</a></b>" +
+          (t.destination ? "<br>" + G.esc(t.destination) : "") +
+          (G.tripDates(t) ? "<br>" + G.esc(G.tripDates(t)) : ""),
+      })));
+    }
   } catch (e) {
     G.stateNote(list, "加载失败：" + e.message, true);
   }

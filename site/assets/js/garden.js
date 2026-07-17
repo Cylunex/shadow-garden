@@ -113,5 +113,26 @@ window.Garden = (function () {
   }
   initTheme(); // garden.js 以 defer 加载，DOM 已就绪
 
+  /* 图片灯箱：点内容图放大，再点或 Esc 关闭 */
+  document.addEventListener("click", (e) => {
+    const open = document.getElementById("lightbox");
+    if (open) { open.remove(); return; }
+    const img = e.target.closest(".photo-grid img, .card .thumb, .prose img");
+    if (!img) return;
+    const box = document.createElement("div");
+    box.id = "lightbox";
+    const full = document.createElement("img");
+    full.src = img.src;
+    full.alt = img.alt || "";
+    box.appendChild(full);
+    document.body.appendChild(box);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const box = document.getElementById("lightbox");
+      if (box) box.remove();
+    }
+  });
+
   return { api, esc, fmtDate, fmtDateTime, stars, tagsHtml, postItem, projectCard, foodCard, tripItem, tripDates, momentCard, stateNote };
 })();

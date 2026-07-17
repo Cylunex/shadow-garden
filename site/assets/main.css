@@ -281,6 +281,44 @@ footer a:hover { color: var(--text); }
 .toc a { color: var(--text); text-decoration: none; line-height: 1.9; }
 .toc a:hover { color: var(--accent); }
 
+/* 地图 */
+.map-box {
+  height: 340px; border-radius: 12px; border: 1px solid var(--line);
+  box-shadow: var(--shadow); margin: 1.5rem 0; z-index: 0;
+}
+.map-box.small { height: 260px; }
+.map-box .leaflet-popup-content-wrapper, .map-box .leaflet-popup-tip {
+  background: var(--bg-card); color: var(--text);
+}
+.map-box .leaflet-popup-content { font-family: inherit; line-height: 1.5; }
+.map-box .leaflet-popup-content a { color: var(--accent); }
+/* 深色模式：把浅色瓦片反色（标记与弹窗不受影响） */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .map-box .leaflet-layer,
+  :root:not([data-theme="light"]) .map-box .leaflet-control-zoom,
+  :root:not([data-theme="light"]) .map-box .leaflet-control-attribution {
+    filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9);
+  }
+}
+:root[data-theme="dark"] .map-box .leaflet-layer,
+:root[data-theme="dark"] .map-box .leaflet-control-zoom,
+:root[data-theme="dark"] .map-box .leaflet-control-attribution {
+  filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9);
+}
+
+/* 图片灯箱 */
+#lightbox {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(8, 10, 18, .88);
+  display: flex; align-items: center; justify-content: center;
+  padding: 2rem; cursor: zoom-out;
+}
+#lightbox img {
+  max-width: 100%; max-height: 100%; object-fit: contain;
+  border-radius: 8px; box-shadow: 0 8px 40px rgba(0, 0, 0, .5);
+}
+.photo-grid img, .card .thumb, .prose img { cursor: zoom-in; }
+
 /* 说说 */
 .moment {
   background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px;

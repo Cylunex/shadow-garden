@@ -100,6 +100,37 @@ def test_code_highlight_rendering(client, admin_headers):
     assert 'class="highlight"' in html
 
 
+def test_geo_fields_roundtrip(client, admin_headers):
+    # 坐标可选：不填为 null，填了原样返回，越界拒绝
+    resp = client.post("/api/food", json={"title": "无坐标"}, headers=admin_headers)
+    assert resp.json()["lat"] is None
+
+    resp = client.post(
+        "/api/food",
+        json={"title": "有坐标", "lat": 36.067, "lng": 120.383},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["lat"] == 36.067
+
+    assert client.post(
+        "/api/food", json={"title": "越界", "lat": 91}, headers=admin_headers
+    ).status_code == 422
+
+    resp = client.post(
+        "/api/trips",
+        json={"title": "青岛", "lat": 36.067, "lng": 120.383},
+        headers=admin_headers,
+    )
+    tid = resp.json()["id"]
+    detail = client.get(f"/api/trips/{tid}").json()
+    assert (detail["lat"], detail["lng"]) == (36.067, 120.383)
+
+    # 清掉坐标
+    client.put(f"/api/trips/{tid}", json={"title": "青岛"}, headers=admin_headers)
+    assert client.get(f"/api/trips/{tid}").json()["lat"] is None
+
+
 def test_summary_includes_moments(client, admin_headers):
     client.post("/api/moments", json={"content_md": "首页可见"}, headers=admin_headers)
     data = client.get("/api/summary").json()

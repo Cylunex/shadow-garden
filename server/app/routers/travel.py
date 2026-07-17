@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -20,6 +20,8 @@ class TripIn(BaseModel):
     summary: str = ""
     content_md: str = ""
     photos: List[str] = []
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    lng: Optional[float] = Field(default=None, ge=-180, le=180)
 
 
 def _serialize(row: sqlite3.Row, with_content: bool = False) -> dict:
@@ -31,6 +33,8 @@ def _serialize(row: sqlite3.Row, with_content: bool = False) -> dict:
         "end_date": row["end_date"],
         "summary": row["summary"],
         "photos": json.loads(row["photos"] or "[]"),
+        "lat": row["lat"],
+        "lng": row["lng"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -61,12 +65,12 @@ def create_trip(body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
         """INSERT INTO trips (title, destination, start_date, end_date, summary,
-                              content_md, content_html, photos, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+                              content_md, content_html, photos, lat, lng, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             body.title, body.destination, body.start_date, body.end_date,
             body.summary, body.content_md, render_markdown(body.content_md),
-            json.dumps(body.photos, ensure_ascii=False), now, now,
+            json.dumps(body.photos, ensure_ascii=False), body.lat, body.lng, now, now,
         ),
     )
     row = conn.execute("SELECT * FROM trips WHERE id = ?", (inserted_id(cur),)).fetchone()
@@ -77,12 +81,14 @@ def create_trip(body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
 def update_trip(trip_id: int, body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         """UPDATE trips SET title=?, destination=?, start_date=?, end_date=?,
-                            summary=?, content_md=?, content_html=?, photos=?, updated_at=?
+                            summary=?, content_md=?, content_html=?, photos=?,
+                            lat=?, lng=?, updated_at=?
            WHERE id=?""",
         (
             body.title, body.destination, body.start_date, body.end_date,
             body.summary, body.content_md, render_markdown(body.content_md),
-            json.dumps(body.photos, ensure_ascii=False), now_iso(), trip_id,
+            json.dumps(body.photos, ensure_ascii=False),
+            body.lat, body.lng, now_iso(), trip_id,
         ),
     )
     if cur.rowcount == 0:
