@@ -33,7 +33,7 @@
 </main>
 
 <footer>
-  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a></div>
+  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a> · <a href="/stats/">花园数据</a> · <a href="/api/random">随便逛逛</a></div>
 </footer>
 
 <script>
@@ -67,7 +67,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       '<div class="meta">' + meta + "</div>" +
       G.tagsHtml(p.tags) +
       '<div class="prose" id="prose">' + p.content_html + "</div>" +
+      '<div class="water-row">' +
+      '<button class="water-btn" id="water-btn">🌱 给这篇浇水 · <span id="water-count">' + p.waters + "</span></button>" +
+      '<div class="water-note">觉得不错就浇一瓢水，让它长得更好</div>' +
+      "</div>" +
       nav;
+
+    // 浇水：本地记住已浇，服务端（Redis）再兜一层每天一次
+    const waterBtn = document.getElementById("water-btn");
+    const waterKey = "garden-watered:" + slug;
+    if (localStorage.getItem(waterKey)) waterBtn.classList.add("watered");
+    waterBtn.addEventListener("click", async () => {
+      if (waterBtn.classList.contains("watered")) return;
+      try {
+        const res = await G.api("/api/posts/" + encodeURIComponent(slug) + "/water", { method: "POST" });
+        document.getElementById("water-count").textContent = res.waters;
+        waterBtn.classList.add("watered");
+        localStorage.setItem(waterKey, "1");
+      } catch (err) {
+        /* 网络失败就算了，不打扰阅读 */
+      }
+    });
 
     // 有两个以上小标题时生成目录
     const heads = box.querySelectorAll("#prose h2, #prose h3");

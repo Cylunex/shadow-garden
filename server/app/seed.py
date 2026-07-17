@@ -81,8 +81,6 @@ TRIPS = [
             "## Day 1\n\n栈桥到八大关一路走过去，五月的风刚刚好。\n\n"
             "## Day 2\n\n早市的蛤蜊和原浆啤酒，比景点值得。\n"
         ),
-        "lat": 36.067,
-        "lng": 120.383,
     },
 ]
 
@@ -151,12 +149,12 @@ def seed() -> None:
             for t in TRIPS:
                 conn.execute(
                     """INSERT INTO trips (title, destination, start_date, end_date, summary,
-                                          content_md, content_html, photos, lat, lng, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?)""",
+                                          content_md, content_html, photos, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)""",
                     (
                         t["title"], t["destination"], t["start_date"], t["end_date"],
                         t["summary"], t["content_md"], render_markdown(t["content_md"]),
-                        t.get("lat"), t.get("lng"), now, now,
+                        now, now,
                     ),
                 )
             print(f"trips: 插入 {len(TRIPS)} 条")

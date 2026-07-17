@@ -281,30 +281,51 @@ footer a:hover { color: var(--text); }
 .toc a { color: var(--text); text-decoration: none; line-height: 1.9; }
 .toc a:hover { color: var(--accent); }
 
-/* 地图 */
-.map-box {
-  height: 340px; border-radius: 12px; border: 1px solid var(--line);
-  box-shadow: var(--shadow); margin: 1.5rem 0; z-index: 0;
+/* 花园数据 */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem; margin: 2rem 0;
 }
-.map-box.small { height: 260px; }
-.map-box .leaflet-popup-content-wrapper, .map-box .leaflet-popup-tip {
-  background: var(--bg-card); color: var(--text);
+.stat-tile {
+  background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--shadow); padding: 1.1rem 1.3rem;
 }
-.map-box .leaflet-popup-content { font-family: inherit; line-height: 1.5; }
-.map-box .leaflet-popup-content a { color: var(--accent); }
-/* 深色模式：把浅色瓦片反色（标记与弹窗不受影响） */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .map-box .leaflet-layer,
-  :root:not([data-theme="light"]) .map-box .leaflet-control-zoom,
-  :root:not([data-theme="light"]) .map-box .leaflet-control-attribution {
-    filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9);
-  }
+.stat-tile .num {
+  font-size: 1.7rem; font-weight: 700; line-height: 1.2;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-:root[data-theme="dark"] .map-box .leaflet-layer,
-:root[data-theme="dark"] .map-box .leaflet-control-zoom,
-:root[data-theme="dark"] .map-box .leaflet-control-attribution {
-  filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9);
+.stat-tile .label { color: var(--text-dim); font-size: .85rem; margin-top: .2rem; }
+
+.heatmap-wrap { overflow-x: auto; padding-bottom: .5rem; }
+.heatmap {
+  display: grid; grid-auto-flow: column;
+  grid-template-rows: repeat(7, 12px); gap: 3px; width: max-content;
 }
+.hm-cell {
+  width: 12px; height: 12px; border-radius: 3px;
+  background: color-mix(in srgb, var(--line) 55%, transparent);
+}
+.hm-cell.l1 { background: color-mix(in srgb, var(--accent-2) 30%, transparent); }
+.hm-cell.l2 { background: color-mix(in srgb, var(--accent-2) 55%, transparent); }
+.hm-cell.l3 { background: color-mix(in srgb, var(--accent-2) 80%, transparent); }
+.hm-cell.l4 { background: var(--accent-2); }
+.hm-legend {
+  display: flex; align-items: center; gap: .35rem;
+  color: var(--text-dim); font-size: .78rem; margin-top: .6rem;
+}
+
+/* 浇水按钮 */
+.water-row { margin-top: 2.5rem; text-align: center; }
+.water-btn {
+  font: inherit; font-size: 1rem; cursor: pointer;
+  padding: .6em 1.6em; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-card); color: var(--text);
+  transition: transform .15s, border-color .15s;
+}
+.water-btn:hover { transform: translateY(-1px); border-color: var(--accent-2); }
+.water-btn.watered { border-color: var(--accent-2); color: var(--accent-2); cursor: default; }
+.water-note { color: var(--text-dim); font-size: .8rem; margin-top: .5rem; }
 
 /* 图片灯箱 */
 #lightbox {

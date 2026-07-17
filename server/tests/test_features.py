@@ -1,4 +1,5 @@
-"""第二轮功能：浏览计数、翻页、搜索、说说、RSS/sitemap、导出。"""
+"""第二轮及以后功能：浏览计数、翻页、搜索、说说、RSS/sitemap、导出、浇水、统计、漫步。"""
+import os
 
 
 def _publish(client, headers, title, slug, content="正文"):
@@ -100,35 +101,50 @@ def test_code_highlight_rendering(client, admin_headers):
     assert 'class="highlight"' in html
 
 
-def test_geo_fields_roundtrip(client, admin_headers):
-    # 坐标可选：不填为 null，填了原样返回，越界拒绝
-    resp = client.post("/api/food", json={"title": "无坐标"}, headers=admin_headers)
-    assert resp.json()["lat"] is None
+def test_water(client, admin_headers):
+    _publish(client, admin_headers, "浇水测试", "water-me")
 
-    resp = client.post(
-        "/api/food",
-        json={"title": "有坐标", "lat": 36.067, "lng": 120.383},
-        headers=admin_headers,
-    )
-    assert resp.status_code == 201
-    assert resp.json()["lat"] == 36.067
+    # 草稿不能浇
+    client.post("/api/posts", json={"title": "草稿", "slug": "draft-w"}, headers=admin_headers)
+    assert client.post("/api/posts/draft-w/water").status_code == 404
 
-    assert client.post(
-        "/api/food", json={"title": "越界", "lat": 91}, headers=admin_headers
-    ).status_code == 422
+    r1 = client.post("/api/posts/water-me/water").json()
+    assert r1 == {"waters": 1, "watered": True}
 
-    resp = client.post(
-        "/api/trips",
-        json={"title": "青岛", "lat": 36.067, "lng": 120.383},
-        headers=admin_headers,
-    )
-    tid = resp.json()["id"]
-    detail = client.get(f"/api/trips/{tid}").json()
-    assert (detail["lat"], detail["lng"]) == (36.067, 120.383)
+    r2 = client.post("/api/posts/water-me/water").json()
+    if os.environ.get("REDIS_TEST_URL"):
+        # Redis 防刷：同 IP 当天第二次不计数
+        assert r2 == {"waters": 1, "watered": False}
+    else:
+        assert r2["waters"] == 2
 
-    # 清掉坐标
-    client.put(f"/api/trips/{tid}", json={"title": "青岛"}, headers=admin_headers)
-    assert client.get(f"/api/trips/{tid}").json()["lat"] is None
+    assert client.get("/api/posts/water-me").json()["waters"] == r2["waters"]
+
+
+def test_stats(client, admin_headers):
+    _publish(client, admin_headers, "统计文章", "stats-post", content="你好世界 " * 50)
+    client.post("/api/moments", json={"content_md": "统计说说"}, headers=admin_headers)
+    client.post("/api/food", json={"title": "统计菜", "rating": 4}, headers=admin_headers)
+
+    data = client.get("/api/stats").json()
+    assert data["counts"]["posts"] == 1
+    assert data["counts"]["moments"] == 1
+    assert data["counts"]["food"] == 1
+    assert data["words"] >= 200
+    assert data["avg_food_rating"] == 4.0
+    assert data["garden_age_days"] >= 1
+    assert sum(d["count"] for d in data["heatmap"]) >= 3
+    assert any(t["tag"] for t in data["top_tags"]) or data["top_tags"] == []
+
+
+def test_random_walk(client, admin_headers):
+    # 空花园兜底回首页
+    resp = client.get("/api/random", follow_redirects=False)
+    assert resp.status_code == 302 and resp.headers["location"] == "/"
+
+    _publish(client, admin_headers, "漫步", "walk-post")
+    resp = client.get("/api/random", follow_redirects=False)
+    assert resp.headers["location"] == "/blog/post.html?slug=walk-post"
 
 
 def test_summary_includes_moments(client, admin_headers):

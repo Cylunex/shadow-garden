@@ -5,11 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>美食 · Shadow Garden</title>
 <link rel="stylesheet" href="/assets/main.css">
-<link rel="stylesheet" href="/assets/vendor/leaflet/leaflet.css">
 <script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
 <script src="/assets/js/garden.js" defer></script>
-<script src="/assets/vendor/leaflet/leaflet.js" defer></script>
-<script src="/assets/js/map.js" defer></script>
 </head>
 <body>
 
@@ -33,14 +30,13 @@
     <h1>美食</h1>
     <p>吃过的好味道——外面吃的、自己做的、翻车的都记。</p>
   </div>
-  <div class="map-box" id="map" hidden></div>
   <section style="border-top:none;padding-top:2rem">
     <div class="grid" id="list"><p class="state-note">加载中…</p></div>
   </section>
 </main>
 
 <footer>
-  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a></div>
+  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a> · <a href="/stats/">花园数据</a> · <a href="/api/random">随便逛逛</a></div>
 </footer>
 
 <script>
@@ -52,20 +48,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     list.innerHTML = items.length
       ? items.map(G.foodCard).join("")
       : '<p class="state-note">还没有美食记录，先去吃点好的。</p>';
-
-    // 美食地图：有坐标的记录落点
-    const geo = items.filter((f) => f.lat != null && f.lng != null);
-    if (geo.length) {
-      const mapEl = document.getElementById("map");
-      mapEl.hidden = false;
-      const map = GardenMap.create(mapEl);
-      GardenMap.markers(map, geo.map((f) => ({
-        lat: f.lat, lng: f.lng,
-        html: "<b>" + G.esc(f.emoji) + " " + G.esc(f.title) + "</b>" +
-          '<br><span class="stars">' + G.stars(f.rating) + "</span>" +
-          (f.location ? "<br>" + G.esc(f.location) : ""),
-      })));
-    }
   } catch (e) {
     G.stateNote(list, "加载失败：" + e.message, true);
   }

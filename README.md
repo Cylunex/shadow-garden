@@ -8,7 +8,8 @@ Cylunex 的数字花园 —— 前后端完整的个人网站：博客、项目�
 - **鉴权**：公开只读，新增/编辑/删除需口令登录换 Bearer 会话；配 `GARDEN_REDIS_URL` 后会话存 Redis（原生 TTL），并启用登录失败限流（每 IP 10 次 / 10 分钟）
 - **前端**：无构建的纯 HTML/CSS/JS，改完即部署；页面通过 `/api` 拉取内容；深色/浅色主题手动切换（默认跟随系统）
 - **博客体验**：站内全文搜索、标签筛选、按年归档、目录 TOC、字数/阅读时长、浏览计数、上一篇/下一篇
-- **地图**：旅行地图与美食地图（自托管 Leaflet，无外部 JS 依赖；瓦片源在 `assets/js/map.js` 一处可换）；美食/游记可选经纬度，后台表单里直接地图选点；游记详情页带小地图
+- **花园数据**：`/stats/` 统计页——文章/字数/阅读/浇水/园龄等面板 + GitHub 风格的年度照料热力图 + 标签榜
+- **浇水与漫步**：文章页匿名点赞（「给这篇浇水」，Redis 防刷每 IP 每天一次）；页脚「随便逛逛」随机跳一篇内容
 - **图片**：美食照片、游记相册、正文 Markdown 插图（后台上传），全站点击图片放大（灯箱）
 - **订阅与 SEO**：RSS（`/feed.xml`）、sitemap（`/sitemap.xml`）、robots.txt
 - **数据自持**：后台一键导出全部内容 JSON；备份 = 拷 `server/data/` 目录
@@ -22,6 +23,7 @@ site/                        # 前端静态站（= 服务器 webroot）
   blog/                      # 博客列表（搜索/归档）+ 文章页（post.html?slug=…）
   projects/  food/  travel/  # 项目 / 美食 / 旅行（trip.html?id=…）
   moments/                   # 说说（短内容随手记）
+  stats/                     # 花园数据（统计 + 照料热力图）
   about/                     # 关于页
   admin/                     # 管理后台（登录后增删改查全部内容）
   assets/                    # main.css + admin.css + js/garden.js + js/admin.js
@@ -65,6 +67,9 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 | `GET/PUT /api/about` | 关于页（介绍 + 联系方式） |
 | `POST /api/uploads` | 图片上传（jpg/png/gif/webp，默认 ≤8MB） |
 | `GET /api/summary` | 首页聚合 |
+| `GET /api/stats` | 花园数据（统计 + 热力图 + 标签榜） |
+| `POST /api/posts/{slug}/water` | 给文章浇水（匿名点赞，Redis 防刷） |
+| `GET /api/random` | 随便逛逛（302 随机跳转） |
 | `GET /api/search?q=` | 全文搜索（已发布文章 + 游记） |
 | `GET /api/export` | 全量内容导出（备份，需登录） |
 | `POST /api/preview` | Markdown 预览（后台用） |

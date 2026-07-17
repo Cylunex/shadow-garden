@@ -2,11 +2,11 @@ import secrets
 import sqlite3
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing_extensions import Literal
 
-from ..auth import optional_admin, require_admin
+from ..auth import get_redis, optional_admin, require_admin
 from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 from ..rendering import reading_minutes, render_markdown, slugify, word_count
 
@@ -32,6 +32,7 @@ def _serialize(row: sqlite3.Row, with_content: bool = False) -> dict:
         "status": row["status"],
         "published_at": row["published_at"],
         "views": row["views"],
+        "waters": row["waters"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -110,6 +111,33 @@ def get_post(
         if next_row:
             post["next"] = {"slug": next_row["slug"], "title": next_row["title"]}
     return post
+
+
+@router.post("/{slug}/water")
+def water_post(
+    slug: str,
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    """给文章浇水（匿名点赞）。配置了 Redis 时每 IP 每篇每天限一次。"""
+    row = conn.execute(
+        "SELECT id, waters FROM posts WHERE slug = ? AND status = 'published'", (slug,)
+    ).fetchone()
+    if row is None:
+        raise HTTPException(404, "文章不存在")
+
+    r = get_redis()
+    if r is not None:
+        ip = request.headers.get("x-real-ip") or (
+            request.client.host if request.client else "unknown"
+        )
+        # SETNX + 24h 过期：今天浇过就不再计数
+        if not r.set(f"garden:water:{slug}:{ip}", 1, nx=True, ex=86400):
+            return {"waters": row["waters"], "watered": False}
+
+    conn.execute("UPDATE posts SET waters = waters + 1 WHERE id = ?", (row["id"],))
+    fresh = conn.execute("SELECT waters FROM posts WHERE id = ?", (row["id"],)).fetchone()
+    return {"waters": fresh["waters"], "watered": True}
 
 
 @router.post("", dependencies=[Depends(require_admin)], status_code=201)

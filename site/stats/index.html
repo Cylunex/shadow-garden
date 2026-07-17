@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>花园数据 · Shadow Garden</title>
+<link rel="stylesheet" href="/assets/main.css">
+<script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
+<script src="/assets/js/garden.js" defer></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="/">Shadow Garden</a>
+    <nav class="nav-links">
+      <a href="/projects/">项目</a>
+      <a href="/blog/">博客</a>
+      <a href="/moments/">说说</a>
+      <a href="/food/">美食</a>
+      <a href="/travel/">旅行</a>
+      <a href="/about/">关于</a>
+      <button class="theme-btn" id="theme-btn" title="切换主题">🌗</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-head">
+    <h1>花园数据</h1>
+    <p>这座花园长了多大、浇了多少水，一目了然。</p>
+  </div>
+
+  <div class="stats-grid" id="tiles"><p class="state-note">加载中…</p></div>
+
+  <section style="border-top:none;padding-top:1rem">
+    <div class="sec-head"><h2>照料记录</h2><span>过去一年，每格一天</span></div>
+    <div class="heatmap-wrap"><div class="heatmap" id="heatmap"></div></div>
+    <div class="hm-legend">
+      少 <span class="hm-cell"></span><span class="hm-cell l1"></span><span class="hm-cell l2"></span><span class="hm-cell l3"></span><span class="hm-cell l4"></span> 多
+    </div>
+  </section>
+
+  <section id="tags-sec" hidden>
+    <div class="sec-head"><h2>常用标签</h2></div>
+    <div class="tags" id="tags"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a> · <a href="/stats/">花园数据</a> · <a href="/api/random">随便逛逛</a></div>
+</footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const G = window.Garden;
+  const tiles = document.getElementById("tiles");
+  const pad = (n) => String(n).padStart(2, "0");
+
+  function fmtWords(n) {
+    return n >= 10000 ? (n / 10000).toFixed(1) + " 万" : String(n);
+  }
+
+  try {
+    const s = await G.api("/api/stats");
+
+    const items = [
+      [s.counts.posts, "篇文章"],
+      [fmtWords(s.words), "字"],
+      [s.counts.moments, "条说说"],
+      [s.counts.food, "条美食" + (s.avg_food_rating ? " · 均分 " + s.avg_food_rating : "")],
+      [s.counts.trips, "段旅程"],
+      [s.counts.projects, "个项目"],
+      [s.total_views, "次阅读"],
+      [s.total_waters, "瓢水"],
+      [s.garden_age_days, "天园龄"],
+    ];
+    tiles.innerHTML = items.map(([num, label]) =>
+      '<div class="stat-tile"><div class="num">' + G.esc(num) + '</div><div class="label">' + G.esc(label) + "</div></div>"
+    ).join("");
+
+    // 热力图：过去 365 天，列为周、行为周一到周日
+    const byDate = {};
+    s.heatmap.forEach((h) => { byDate[h.date] = h.count; });
+    const today = new Date(); today.setHours(12, 0, 0, 0);
+    const start = new Date(today); start.setDate(start.getDate() - 364);
+    const offset = (start.getDay() + 6) % 7; // 周一对齐
+    let cells = "";
+    for (let i = 0; i < offset; i++) cells += '<span class="hm-cell" style="visibility:hidden"></span>';
+    for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+      const iso = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+      const n = byDate[iso] || 0;
+      const lvl = n === 0 ? "" : n === 1 ? " l1" : n === 2 ? " l2" : n <= 4 ? " l3" : " l4";
+      cells += '<span class="hm-cell' + lvl + '" title="' + iso + "：" + n + ' 次照料"></span>';
+    }
+    document.getElementById("heatmap").innerHTML = cells;
+
+    if (s.top_tags.length) {
+      document.getElementById("tags-sec").hidden = false;
+      document.getElementById("tags").innerHTML = s.top_tags.map((t) =>
+        '<span class="tag">' + G.esc(t.tag) + " × " + t.count + "</span>"
+      ).join("");
+    }
+  } catch (e) {
+    G.stateNote(tiles, "加载失败：" + e.message, true);
+  }
+});
+</script>
+
+</body>
+</html>

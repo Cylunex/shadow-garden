@@ -5,22 +5,24 @@
 生产环境由 nginx 托管 site/ 与 /uploads/，仅反代 /api/ 与 feed/sitemap；
 uvicorn 同时挂载 site/ 是为了本地一条命令起整站。
 """
+import random
 import sqlite3
+from collections import Counter
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime
 from email.utils import format_datetime
 from urllib.parse import quote
 from xml.sax.saxutils import escape
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .auth import require_admin
 from .config import SITE_DIR, settings
 from .db import get_db, init_db, tags_from_json
-from .rendering import render_markdown
+from .rendering import render_markdown, word_count
 from .routers import about, auth, food, moments, posts, projects, travel, uploads
 
 SITE_TITLE = "Shadow Garden"
@@ -104,6 +106,84 @@ def search(
     }
 
 
+@app.get("/api/stats")
+def stats(conn: sqlite3.Connection = Depends(get_db)):
+    """花园数据：统计面板 + 过去一年的照料热力图 + 标签榜。"""
+    def one(sql: str):
+        return conn.execute(sql).fetchone()
+
+    counts = {
+        "posts": one("SELECT COUNT(*) AS n FROM posts WHERE status = 'published'")["n"],
+        "moments": one("SELECT COUNT(*) AS n FROM moments")["n"],
+        "food": one("SELECT COUNT(*) AS n FROM food")["n"],
+        "trips": one("SELECT COUNT(*) AS n FROM trips")["n"],
+        "projects": one("SELECT COUNT(*) AS n FROM projects")["n"],
+    }
+
+    words = 0
+    for sql in (
+        "SELECT content_md AS c FROM posts WHERE status = 'published'",
+        "SELECT content_md AS c FROM trips",
+        "SELECT content_md AS c FROM moments",
+    ):
+        words += sum(word_count(r["c"]) for r in conn.execute(sql))
+
+    totals = one("SELECT COALESCE(SUM(views), 0) AS v, COALESCE(SUM(waters), 0) AS w FROM posts")
+    rating = one("SELECT AVG(rating) AS a FROM food")["a"]
+
+    # 照料热力图：各表内容按创建日期聚合（文章按发布日期）
+    heat = Counter()
+    for sql in (
+        "SELECT substr(published_at, 1, 10) AS d FROM posts WHERE status = 'published'",
+        "SELECT substr(created_at, 1, 10) AS d FROM moments",
+        "SELECT substr(created_at, 1, 10) AS d FROM food",
+        "SELECT substr(created_at, 1, 10) AS d FROM trips",
+        "SELECT substr(created_at, 1, 10) AS d FROM projects",
+    ):
+        heat.update(r["d"] for r in conn.execute(sql) if r["d"])
+
+    first = None
+    for table, col in (("posts", "created_at"), ("moments", "created_at"),
+                       ("food", "created_at"), ("trips", "created_at"),
+                       ("projects", "created_at")):
+        row = one(f"SELECT MIN({col}) AS m FROM {table}")
+        if row["m"] and (first is None or row["m"] < first):
+            first = row["m"]
+    age_days = (date.today() - date.fromisoformat(first[:10])).days + 1 if first else 0
+
+    tag_counter = Counter()
+    for sql in ("SELECT tags FROM posts WHERE status = 'published'",
+                "SELECT tags FROM food", "SELECT tags FROM projects"):
+        for r in conn.execute(sql):
+            tag_counter.update(tags_from_json(r["tags"]))
+
+    return {
+        "counts": counts,
+        "words": words,
+        "total_views": totals["v"],
+        "total_waters": totals["w"],
+        "avg_food_rating": round(float(rating), 1) if rating is not None else None,
+        "garden_age_days": age_days,
+        "heatmap": [{"date": d, "count": n} for d, n in sorted(heat.items())],
+        "top_tags": [{"tag": t, "count": n} for t, n in tag_counter.most_common(20)],
+    }
+
+
+@app.get("/api/random")
+def random_walk(conn: sqlite3.Connection = Depends(get_db)):
+    """随便逛逛：随机跳到花园里的一篇内容。"""
+    urls = [
+        f"/blog/post.html?slug={quote(r['slug'])}"
+        for r in conn.execute("SELECT slug FROM posts WHERE status = 'published'")
+    ]
+    urls += [f"/travel/trip.html?id={r['id']}" for r in conn.execute("SELECT id FROM trips")]
+    if conn.execute("SELECT COUNT(*) AS n FROM moments").fetchone()["n"]:
+        urls.append("/moments/")
+    if conn.execute("SELECT COUNT(*) AS n FROM food").fetchone()["n"]:
+        urls.append("/food/")
+    return RedirectResponse(random.choice(urls) if urls else "/", status_code=302)
+
+
 def _base_url(request: Request) -> str:
     """站点根地址；nginx 反代时以 X-Forwarded-Proto + Host 为准。"""
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
@@ -154,7 +234,7 @@ def feed(request: Request, conn: sqlite3.Connection = Depends(get_db)):
 def sitemap(request: Request, conn: sqlite3.Connection = Depends(get_db)):
     base = _base_url(request)
     urls = [f"{base}{p}" for p in
-            ("/", "/blog/", "/projects/", "/food/", "/travel/", "/moments/", "/about/")]
+            ("/", "/blog/", "/projects/", "/food/", "/travel/", "/moments/", "/stats/", "/about/")]
     urls += [
         f"{base}/blog/post.html?slug={quote(r['slug'])}"
         for r in conn.execute("SELECT slug FROM posts WHERE status = 'published'")

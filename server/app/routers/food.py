@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -19,8 +19,6 @@ class FoodIn(BaseModel):
     photo: str = ""
     tags: List[str] = []
     eaten_on: str = ""   # YYYY-MM-DD，留空表示未填
-    lat: Optional[float] = Field(default=None, ge=-90, le=90)
-    lng: Optional[float] = Field(default=None, ge=-180, le=180)
 
 
 def _serialize(row: sqlite3.Row) -> dict:
@@ -34,8 +32,6 @@ def _serialize(row: sqlite3.Row) -> dict:
         "photo": row["photo"],
         "tags": tags_from_json(row["tags"]),
         "eaten_on": row["eaten_on"],
-        "lat": row["lat"],
-        "lng": row["lng"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -54,12 +50,11 @@ def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
         """INSERT INTO food (title, emoji, rating, location, review, photo,
-                             tags, eaten_on, lat, lng, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+                             tags, eaten_on, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             body.title, body.emoji, body.rating, body.location, body.review,
-            body.photo, tags_to_json(body.tags), body.eaten_on,
-            body.lat, body.lng, now, now,
+            body.photo, tags_to_json(body.tags), body.eaten_on, now, now,
         ),
     )
     row = conn.execute("SELECT * FROM food WHERE id = ?", (inserted_id(cur),)).fetchone()
@@ -70,12 +65,11 @@ def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
 def update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         """UPDATE food SET title=?, emoji=?, rating=?, location=?, review=?,
-                           photo=?, tags=?, eaten_on=?, lat=?, lng=?, updated_at=?
+                           photo=?, tags=?, eaten_on=?, updated_at=?
            WHERE id=?""",
         (
             body.title, body.emoji, body.rating, body.location, body.review,
-            body.photo, tags_to_json(body.tags), body.eaten_on,
-            body.lat, body.lng, now_iso(), food_id,
+            body.photo, tags_to_json(body.tags), body.eaten_on, now_iso(), food_id,
         ),
     )
     if cur.rowcount == 0:

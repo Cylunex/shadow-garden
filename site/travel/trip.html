@@ -5,11 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>游记 · Shadow Garden</title>
 <link rel="stylesheet" href="/assets/main.css">
-<link rel="stylesheet" href="/assets/vendor/leaflet/leaflet.css">
 <script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
 <script src="/assets/js/garden.js" defer></script>
-<script src="/assets/vendor/leaflet/leaflet.js" defer></script>
-<script src="/assets/js/map.js" defer></script>
 </head>
 <body>
 
@@ -36,7 +33,7 @@
 </main>
 
 <footer>
-  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a></div>
+  <div class="wrap">© 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a> · <a href="/stats/">花园数据</a> · <a href="/api/random">随便逛逛</a></div>
 </footer>
 
 <script>
@@ -53,18 +50,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? '<div class="photo-grid">' + t.photos.map((u) =>
           '<img src="' + G.esc(u) + '" alt="" loading="lazy">').join("") + "</div>"
       : "";
-    const hasGeo = t.lat != null && t.lng != null;
     box.innerHTML =
       "<h1>" + G.esc(t.title) + "</h1>" +
       (meta ? '<div class="meta">' + meta + "</div>" : "") +
       (t.summary ? '<p class="state-note" style="padding:.5rem 0">' + G.esc(t.summary) + "</p>" : "") +
-      (hasGeo ? '<div class="map-box small" id="trip-map"></div>' : "") +
       photos +
       '<div class="prose">' + t.content_html + "</div>";
-    if (hasGeo) {
-      const map = GardenMap.create(document.getElementById("trip-map"));
-      GardenMap.markers(map, [{ lat: t.lat, lng: t.lng, html: G.esc(t.destination || t.title) }]);
-    }
   } catch (e) {
     G.stateNote(box, e.status === 404 ? "游记不存在。" : "加载失败：" + e.message, true);
   }
