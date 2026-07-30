@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -19,6 +19,17 @@ class FoodIn(BaseModel):
     photo: str = ""
     tags: List[str] = []
     eaten_on: str = ""   # YYYY-MM-DD，留空表示未填
+
+
+class FoodPatch(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1)
+    emoji: Optional[str] = None
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
+    location: Optional[str] = None
+    review: Optional[str] = None
+    photo: Optional[str] = None
+    tags: Optional[List[str]] = None
+    eaten_on: Optional[str] = None
 
 
 def _serialize(row: sqlite3.Row) -> dict:
@@ -61,8 +72,7 @@ def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
     return _serialize(row)
 
 
-@router.put("/{food_id}", dependencies=[Depends(require_content_editor)])
-def update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
+def _update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection) -> dict:
     cur = conn.execute(
         """UPDATE food SET title=?, emoji=?, rating=?, location=?, review=?,
                            photo=?, tags=?, eaten_on=?, updated_at=?
@@ -76,6 +86,21 @@ def update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection = Depends(g
         raise HTTPException(404, "记录不存在")
     row = conn.execute("SELECT * FROM food WHERE id = ?", (food_id,)).fetchone()
     return _serialize(row)
+
+
+@router.put("/{food_id}", dependencies=[Depends(require_content_editor)])
+def update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
+    return _update_food(food_id, body, conn)
+
+
+@router.patch("/{food_id}", dependencies=[Depends(require_content_editor)])
+def patch_food(food_id: int, body: FoodPatch, conn: sqlite3.Connection = Depends(get_db)):
+    row = conn.execute("SELECT * FROM food WHERE id = ?", (food_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "记录不存在")
+    current = _serialize(row)
+    current.update(body.model_dump(exclude_unset=True))
+    return _update_food(food_id, FoodIn(**current), conn)
 
 
 @router.delete("/{food_id}", dependencies=[Depends(require_admin)])

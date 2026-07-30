@@ -1,4 +1,5 @@
 import sqlite3
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -12,6 +13,10 @@ router = APIRouter(prefix="/api/moments", tags=["moments"])
 
 class MomentIn(BaseModel):
     content_md: str = Field(min_length=1)
+
+
+class MomentPatch(BaseModel):
+    content_md: Optional[str] = Field(default=None, min_length=1)
 
 
 def _serialize(row: sqlite3.Row) -> dict:
@@ -56,6 +61,19 @@ def update_moment(moment_id: int, body: MomentIn, conn: sqlite3.Connection = Dep
         raise HTTPException(404, "说说不存在")
     row = conn.execute("SELECT * FROM moments WHERE id = ?", (moment_id,)).fetchone()
     return _serialize(row)
+
+
+@router.patch("/{moment_id}", dependencies=[Depends(require_content_editor)])
+def patch_moment(
+    moment_id: int,
+    body: MomentPatch,
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    row = conn.execute("SELECT * FROM moments WHERE id = ?", (moment_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "说说不存在")
+    content_md = body.content_md if body.content_md is not None else row["content_md"]
+    return update_moment(moment_id, MomentIn(content_md=content_md), conn)
 
 
 @router.delete("/{moment_id}", dependencies=[Depends(require_admin)])

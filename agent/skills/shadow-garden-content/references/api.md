@@ -3,8 +3,14 @@
 Base URL and token come from `SHADOW_GARDEN_API_URL` and
 `SHADOW_GARDEN_AGENT_TOKEN`. Send the token as `Authorization: Bearer ...`.
 
-The content token permits `GET`, `POST`, and `PUT` on supported content paths.
+The content token permits `GET`, `POST`, `PUT`, and `PATCH` on supported content paths.
 It does not permit deletion, project management, about-page changes, or admin login.
+
+## Context
+
+- Current counts, drafts, recent posts, and permissions: `GET /api/editor/context`
+
+Use this before starting a content task so existing drafts are not duplicated.
 
 ## Blog
 
@@ -12,6 +18,7 @@ It does not permit deletion, project management, about-page changes, or admin lo
 - Read: `GET /api/posts/{slug}`
 - Create: `POST /api/posts`
 - Update: `PUT /api/posts/{id}`
+- Partial update (preferred): `PATCH /api/posts/{id}`
 
 ```json
 {
@@ -24,8 +31,8 @@ It does not permit deletion, project management, about-page changes, or admin lo
 }
 ```
 
-`status` is `draft` or `published`. An update is a full replacement; preserve
-all unchanged fields from the existing record.
+`status` is `draft` or `published`. `PUT` is a full replacement. Prefer `PATCH`
+with only the fields requested by the user.
 
 ## Travel
 
@@ -33,6 +40,7 @@ all unchanged fields from the existing record.
 - Read: `GET /api/trips/{id}`
 - Create: `POST /api/trips`
 - Update: `PUT /api/trips/{id}`
+- Partial update (preferred): `PATCH /api/trips/{id}`
 
 ```json
 {
@@ -51,6 +59,7 @@ all unchanged fields from the existing record.
 - List: `GET /api/food`
 - Create: `POST /api/food`
 - Update: `PUT /api/food/{id}`
+- Partial update (preferred): `PATCH /api/food/{id}`
 
 ```json
 {
@@ -72,6 +81,7 @@ Rating must be 1–5. Do not guess it.
 - List: `GET /api/moments`
 - Create: `POST /api/moments`
 - Update: `PUT /api/moments/{id}`
+- Partial update (preferred): `PATCH /api/moments/{id}`
 
 ```json
 {

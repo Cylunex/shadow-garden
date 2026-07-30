@@ -10,7 +10,7 @@
 <script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
 <script src="/assets/js/garden.js" defer></script>
 </head>
-<body>
+<body class="home-page">
 
 <header>
   <div class="wrap nav">
@@ -27,41 +27,55 @@
   </div>
 </header>
 
-<main class="wrap">
+<main class="wrap home-main">
 
-  <div class="hero">
-    <div class="hi">Cylunex 的数字花园</div>
-    <h1>种一些代码，<br>也种一些<em>生活</em>。</h1>
-    <p>这里是我的花园：写下的博客、做出来的项目、吃过的好味道、走过的远方，各自生长，不定期浇水。</p>
-    <div class="actions">
-      <a class="btn btn-primary" href="/projects/">逛逛项目</a>
-      <a class="btn btn-ghost" href="/blog/">读读博客</a>
+  <div class="hero hero-grid">
+    <div class="hero-copy">
+      <div class="eyebrow"><span class="live-dot"></span>Cylunex 的数字花园 · 持续生长中</div>
+      <h1>把代码写进现实，<br>把生活<em>种进时间</em>。</h1>
+      <p>这里收留正在发生的项目、偶尔成形的想法、值得回味的一餐，以及走远以后依然清晰的风景。</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/blog/">开始漫游 <span>↗</span></a>
+        <a class="btn btn-ghost" href="/api/random">随机落脚</a>
+      </div>
+      <p class="hero-note">由我记录，也由 Agent 帮忙整理与照料。</p>
+    </div>
+    <div class="garden-orbit" aria-hidden="true">
+      <div class="orbit orbit-one"></div>
+      <div class="orbit orbit-two"></div>
+      <div class="garden-core">
+        <span class="core-mark">影</span>
+        <small>SHADOW<br>GARDEN</small>
+      </div>
+      <div class="orbit-note note-code"><b id="hero-projects">—</b><span>个项目</span></div>
+      <div class="orbit-note note-life"><b id="hero-stories">—</b><span>篇记录</span></div>
+      <div class="orbit-note note-road"><b id="hero-trips">—</b><span>段旅程</span></div>
     </div>
   </div>
 
-  <section id="projects">
-    <div class="sec-head"><h2>项目</h2><span>做过和正在做的东西</span><a class="more" href="/projects/">全部 →</a></div>
-    <div class="grid" id="projects-box"><p class="state-note">加载中…</p></div>
-  </section>
-
-  <section id="blog">
-    <div class="sec-head"><h2>博客</h2><span>不定期更新</span><a class="more" href="/blog/">全部 →</a></div>
+  <section class="garden-section section-blog" id="blog">
+    <div class="sec-head"><div><span class="section-index">01 / WRITING</span><h2>最近写下</h2></div><span>想法、实践与踩坑记录</span><a class="more" href="/blog/">进入博客 <b>↗</b></a></div>
     <ul class="post-list" id="posts-box"><li class="state-note">加载中…</li></ul>
   </section>
 
-  <section id="moments">
-    <div class="sec-head"><h2>说说</h2><span>随手记下的碎碎念</span><a class="more" href="/moments/">全部 →</a></div>
+  <section class="garden-section section-moments" id="moments">
+    <div class="sec-head"><div><span class="section-index">02 / MOMENTS</span><h2>此刻发生</h2></div><span>长不成文章的，也值得留下</span><a class="more" href="/moments/">所有片刻 <b>↗</b></a></div>
     <div id="moments-box"><p class="state-note">加载中…</p></div>
   </section>
 
-  <section id="food">
-    <div class="sec-head"><h2>美食</h2><span>吃过的好味道</span><a class="more" href="/food/">全部 →</a></div>
+  <section class="garden-section section-travel" id="travel">
+    <div class="sec-head"><div><span class="section-index">03 / JOURNEYS</span><h2>去过远方</h2></div><span>路上的见闻与回声</span><a class="more" href="/travel/">旅行地图 <b>↗</b></a></div>
+    <ul class="post-list" id="trips-box"><li class="state-note">加载中…</li></ul>
+  </section>
+
+  <section class="garden-section section-food" id="food">
+    <div class="sec-head"><div><span class="section-index">04 / TASTES</span><h2>认真吃饭</h2></div><span>好味道是生活的坐标</span><a class="more" href="/food/">美食手账 <b>↗</b></a></div>
     <div class="grid" id="food-box"><p class="state-note">加载中…</p></div>
   </section>
 
-  <section id="travel">
-    <div class="sec-head"><h2>旅行</h2><span>走过的远方</span><a class="more" href="/travel/">全部 →</a></div>
-    <ul class="post-list" id="trips-box"><li class="state-note">加载中…</li></ul>
+  <section class="garden-section section-projects" id="projects">
+    <div class="sec-head"><div><span class="section-index">05 / BUILDS</span><h2>正在创造</h2></div><span>做过和正在做的东西</span><a class="more" href="/projects/">项目档案 <b>↗</b></a></div>
+    <div class="grid" id="projects-box"><p class="state-note">加载中…</p></div>
   </section>
 
 </main>
@@ -70,8 +84,7 @@
   <div class="wrap">
     © 2026 Cylunex · Shadow Garden · <a href="/feed.xml">RSS</a> · <a href="/stats/">花园数据</a> · <a href="/api/random">随便逛逛</a> · <a href="/admin/">后台</a>
     <br>
-    <!-- 备案号下来后替换成：<a href="https://beian.miit.gov.cn" target="_blank" rel="noopener">X ICP备XXXXXXXX号</a> -->
-    <span>ICP 备案审核中</span>
+    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">京ICP备2026044449号</a>
   </div>
 </footer>
 
@@ -102,6 +115,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     boxes.trips.innerHTML = data.trips.length
       ? data.trips.map(G.tripItem).join("")
       : '<li class="state-note">还没有游记。</li>';
+    document.getElementById("hero-projects").textContent = data.projects.length;
+    document.getElementById("hero-stories").textContent = data.posts.length + data.moments.length;
+    document.getElementById("hero-trips").textContent = data.trips.length;
   } catch (e) {
     Object.values(boxes).forEach((el) => G.stateNote(el, "内容加载失败：" + e.message, true));
   }

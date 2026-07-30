@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .auth import require_admin
+from .auth import require_admin, require_content_editor
 from .config import SITE_DIR, settings
 from .db import get_db, init_db, tags_from_json
 from .rendering import render_markdown, word_count
@@ -166,6 +166,40 @@ def stats(conn: sqlite3.Connection = Depends(get_db)):
         "garden_age_days": age_days,
         "heatmap": [{"date": d, "count": n} for d, n in sorted(heat.items())],
         "top_tags": [{"tag": t, "count": n} for t, n in tag_counter.most_common(20)],
+    }
+
+
+@app.get("/api/editor/context", dependencies=[Depends(require_content_editor)])
+def editor_context(conn: sqlite3.Connection = Depends(get_db)):
+    """给管理端与内容 Agent 的轻量工作上下文，不返回任何凭据。"""
+    def count(sql: str) -> int:
+        return conn.execute(sql).fetchone()["n"]
+
+    draft_rows = conn.execute(
+        """SELECT * FROM posts WHERE status = 'draft'
+           ORDER BY updated_at DESC, id DESC LIMIT 10"""
+    ).fetchall()
+    recent_rows = conn.execute(
+        """SELECT * FROM posts ORDER BY updated_at DESC, id DESC LIMIT 6"""
+    ).fetchall()
+    return {
+        "agent_configured": bool(settings.agent_token),
+        "counts": {
+            "posts": count("SELECT COUNT(*) AS n FROM posts"),
+            "drafts": count("SELECT COUNT(*) AS n FROM posts WHERE status = 'draft'"),
+            "projects": count("SELECT COUNT(*) AS n FROM projects"),
+            "food": count("SELECT COUNT(*) AS n FROM food"),
+            "trips": count("SELECT COUNT(*) AS n FROM trips"),
+            "moments": count("SELECT COUNT(*) AS n FROM moments"),
+        },
+        "drafts": [posts._serialize(row) for row in draft_rows],
+        "recent_posts": [posts._serialize(row) for row in recent_rows],
+        "capabilities": {
+            "create": ["posts", "trips", "food", "moments", "uploads"],
+            "update": ["posts", "trips", "food", "moments"],
+            "delete": [],
+            "restricted": ["projects", "about", "admin"],
+        },
     }
 
 

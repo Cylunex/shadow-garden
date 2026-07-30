@@ -250,14 +250,67 @@
 
   /* ---------- 视图 ---------- */
 
-  let currentModule = MODULES[0];
+  let currentModule = null;
   let currentItems = [];
 
   function renderTabs() {
-    tabsBox.innerHTML = MODULES.map((m) =>
-      '<button data-tab="' + m.key + '"' + (m.key === currentModule.key ? ' class="active"' : "") + ">" +
+    const currentKey = currentModule ? currentModule.key : "overview";
+    tabsBox.innerHTML =
+      '<button data-tab="overview"' + (currentKey === "overview" ? ' class="active"' : "") +
+      '><span>⌂</span>总览</button>' +
+      MODULES.map((m) =>
+      '<button data-tab="' + m.key + '"' + (m.key === currentKey ? ' class="active"' : "") + ">" +
       m.label + "</button>").join("") +
-      '<button data-export style="margin-left:auto" title="下载全部内容的 JSON 备份">导出备份</button>';
+      '<button data-export class="export-btn" title="下载全部内容的 JSON 备份">导出备份</button>';
+  }
+
+  async function showOverview() {
+    currentModule = null;
+    renderTabs();
+    panel.innerHTML = '<p class="state-note">正在巡视花园…</p>';
+    let data;
+    try {
+      data = await api("/api/editor/context");
+    } catch (e) {
+      panel.innerHTML = '<p class="state-note error">加载失败：' + G.esc(e.message) + "</p>";
+      return;
+    }
+    const counts = [
+      ["posts", "文章", "篇"],
+      ["drafts", "待审草稿", "篇"],
+      ["trips", "旅行", "段"],
+      ["food", "美食", "条"],
+      ["moments", "说说", "条"],
+      ["projects", "项目", "个"],
+    ];
+    const draftHtml = data.drafts.length
+      ? '<div class="review-list">' + data.drafts.map((post) =>
+          '<button class="review-item" data-overview-edit="' + post.id + '">' +
+          '<span><b>' + G.esc(post.title) + '</b><small>更新于 ' + G.fmtDateTime(post.updated_at) +
+          '</small></span><em>继续编辑 →</em></button>').join("") + "</div>"
+      : '<div class="empty-panel"><b>没有待审草稿</b><span>花园现在很整洁，可以让 Hermes 写点新的。</span></div>';
+    panel.innerHTML =
+      '<div class="overview-head"><div><span class="workspace-label">OVERVIEW</span>' +
+      '<h2>下午好，园丁。</h2><p>内容与 Agent 的工作状态都在这里。</p></div>' +
+      '<span class="agent-status ' + (data.agent_configured ? "online" : "offline") + '">' +
+      '<i></i>Hermes ' + (data.agent_configured ? "已连接" : "未配置") + "</span></div>" +
+      '<div class="overview-counts">' + counts.map(([key, label, unit]) =>
+        '<div class="overview-stat"><span>' + label + '</span><b>' + data.counts[key] +
+        '</b><small>' + unit + "</small></div>").join("") + "</div>" +
+      '<div class="overview-grid"><section class="studio-card review-card">' +
+      '<div class="studio-card-head"><div><span class="workspace-label">REVIEW QUEUE</span><h3>草稿待审</h3></div>' +
+      '<button class="btn-sm" data-go-module="posts">全部文章</button></div>' + draftHtml + "</section>" +
+      '<section class="studio-card agent-card"><span class="workspace-label">ASK HERMES</span>' +
+      '<h3>一句话，帮你照料花园</h3><p>在 QQ 里 @机器人，说明素材和发布意图即可。</p>' +
+      '<div class="prompt-list"><button data-copy-prompt>“把今天这顿饭记到美食里，地点是…”</button>' +
+      '<button data-copy-prompt>“根据这些照片写一篇杭州游记，先存草稿”</button>' +
+      '<button data-copy-prompt>“把这段开发记录整理成博客，不要直接发布”</button></div>' +
+      '<small>Agent 可以新增和修改内容，但不能删除，也不能改项目与关于页。</small></section></div>' +
+      '<section class="quick-create"><div><span class="workspace-label">QUICK START</span><h3>自己动手种一篇</h3></div>' +
+      '<div><button class="btn btn-primary" data-quick-new="posts">写博客</button>' +
+      '<button class="btn btn-ghost" data-quick-new="moments">发说说</button>' +
+      '<button class="btn btn-ghost" data-quick-new="food">记美食</button>' +
+      '<button class="btn btn-ghost" data-quick-new="trips">写游记</button></div></section>';
   }
 
   async function exportBackup() {
@@ -367,8 +420,48 @@
   document.addEventListener("click", async (e) => {
     const tab = e.target.closest("[data-tab]");
     if (tab) {
+      if (tab.dataset.tab === "overview") {
+        showOverview();
+        return;
+      }
       currentModule = MODULES.find((m) => m.key === tab.dataset.tab);
       showList();
+      return;
+    }
+    const goModule = e.target.closest("[data-go-module]");
+    if (goModule) {
+      currentModule = MODULES.find((m) => m.key === goModule.dataset.goModule);
+      showList();
+      return;
+    }
+    const quickNew = e.target.closest("[data-quick-new]");
+    if (quickNew) {
+      currentModule = MODULES.find((m) => m.key === quickNew.dataset.quickNew);
+      renderTabs();
+      showForm(null);
+      return;
+    }
+    const overviewEdit = e.target.closest("[data-overview-edit]");
+    if (overviewEdit) {
+      currentModule = MODULES.find((m) => m.key === "posts");
+      try {
+        currentItems = (await api(currentModule.api)).items;
+        const post = currentItems.find((item) => item.id === Number(overviewEdit.dataset.overviewEdit));
+        renderTabs();
+        if (post) showForm(post);
+      } catch (err) {
+        toast("读取草稿失败：" + err.message, true);
+      }
+      return;
+    }
+    const copyPrompt = e.target.closest("[data-copy-prompt]");
+    if (copyPrompt) {
+      try {
+        await navigator.clipboard.writeText(copyPrompt.textContent.replace(/[“”]/g, ""));
+        toast("示例指令已复制");
+      } catch (err) {
+        toast("复制失败，请手动选择", true);
+      }
       return;
     }
     if (e.target.closest("[data-export]")) { exportBackup(); return; }
@@ -434,8 +527,8 @@
     loginView.hidden = true;
     mainView.hidden = false;
     logoutLink.hidden = false;
-    currentModule = MODULES[0];
-    showList();
+    currentModule = null;
+    showOverview();
   }
 
   $("#login-form").addEventListener("submit", async (e) => {

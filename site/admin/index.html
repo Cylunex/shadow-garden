@@ -29,10 +29,12 @@
   <!-- 登录 -->
   <div id="login-view" hidden>
     <form class="login-card" id="login-form">
-      <h1>花园后台</h1>
+      <span class="login-mark">SG / CONTROL ROOM</span>
+      <h1>回到花园</h1>
+      <p>管理内容、审阅草稿，也可以让 Hermes 帮你记录生活。</p>
       <div class="field">
         <label for="password">管理口令</label>
-        <input type="password" id="password" autocomplete="current-password" required>
+        <input type="password" id="password" autocomplete="current-password" placeholder="输入管理口令" required>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" type="submit">进入</button>
@@ -43,8 +45,15 @@
 
   <!-- 主界面 -->
   <div id="main-view" hidden>
-    <div class="admin-tabs" id="tabs"></div>
-    <div id="panel"></div>
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <div class="workspace-label">CONTENT STUDIO</div>
+        <h1>花园工作台</h1>
+        <p>在这里整理内容，Hermes 会负责播种初稿。</p>
+        <div class="admin-tabs" id="tabs"></div>
+      </aside>
+      <div class="admin-workspace" id="panel"></div>
+    </div>
   </div>
 
 </main>

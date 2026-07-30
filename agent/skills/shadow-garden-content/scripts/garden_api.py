@@ -12,6 +12,7 @@ from urllib.request import Request, urlopen
 
 
 ALLOWED_PREFIXES = (
+    "/api/editor/context",
     "/api/posts",
     "/api/trips",
     "/api/food",
@@ -97,7 +98,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Restricted Shadow Garden API client")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    for command in ("get", "post", "put"):
+    for command in ("get", "post", "put", "patch"):
         subparser = subparsers.add_parser(command)
         subparser.add_argument("path")
         if command != "get":
@@ -117,7 +118,7 @@ def main() -> int:
     method = args.command.upper()
     body = None
     content_type = ""
-    if method in {"POST", "PUT"}:
+    if method in {"POST", "PUT", "PATCH"}:
         body = read_json_payload(args.json_path)
         content_type = "application/json"
     return send_request(method, args.path, body, content_type)

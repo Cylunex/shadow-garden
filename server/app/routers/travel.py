@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -20,6 +20,16 @@ class TripIn(BaseModel):
     summary: str = ""
     content_md: str = ""
     photos: List[str] = []
+
+
+class TripPatch(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1)
+    destination: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    summary: Optional[str] = None
+    content_md: Optional[str] = None
+    photos: Optional[List[str]] = None
 
 
 def _serialize(row: sqlite3.Row, with_content: bool = False) -> dict:
@@ -73,8 +83,7 @@ def create_trip(body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
     return _serialize(row, with_content=True)
 
 
-@router.put("/{trip_id}", dependencies=[Depends(require_content_editor)])
-def update_trip(trip_id: int, body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
+def _update_trip(trip_id: int, body: TripIn, conn: sqlite3.Connection) -> dict:
     cur = conn.execute(
         """UPDATE trips SET title=?, destination=?, start_date=?, end_date=?,
                             summary=?, content_md=?, content_html=?, photos=?, updated_at=?
@@ -89,6 +98,21 @@ def update_trip(trip_id: int, body: TripIn, conn: sqlite3.Connection = Depends(g
         raise HTTPException(404, "游记不存在")
     row = conn.execute("SELECT * FROM trips WHERE id = ?", (trip_id,)).fetchone()
     return _serialize(row, with_content=True)
+
+
+@router.put("/{trip_id}", dependencies=[Depends(require_content_editor)])
+def update_trip(trip_id: int, body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
+    return _update_trip(trip_id, body, conn)
+
+
+@router.patch("/{trip_id}", dependencies=[Depends(require_content_editor)])
+def patch_trip(trip_id: int, body: TripPatch, conn: sqlite3.Connection = Depends(get_db)):
+    row = conn.execute("SELECT * FROM trips WHERE id = ?", (trip_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "游记不存在")
+    current = _serialize(row, with_content=True)
+    current.update(body.model_dump(exclude_unset=True))
+    return _update_trip(trip_id, TripIn(**current), conn)
 
 
 @router.delete("/{trip_id}", dependencies=[Depends(require_admin)])

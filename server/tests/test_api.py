@@ -48,6 +48,77 @@ def test_content_agent_scope(client, agent_headers):
     ).status_code == 401
 
 
+def test_content_agent_context_and_partial_updates(client, agent_headers):
+    created = client.post(
+        "/api/posts",
+        json={
+            "title": "保留字段",
+            "summary": "不能丢",
+            "content_md": "旧正文",
+            "tags": ["Agent"],
+        },
+        headers=agent_headers,
+    ).json()
+
+    patched = client.patch(
+        f"/api/posts/{created['id']}",
+        json={"content_md": "新正文"},
+        headers=agent_headers,
+    )
+    assert patched.status_code == 200
+    assert patched.json()["title"] == "保留字段"
+    assert patched.json()["summary"] == "不能丢"
+    assert patched.json()["tags"] == ["Agent"]
+    assert patched.json()["content_md"] == "新正文"
+
+    context = client.get("/api/editor/context", headers=agent_headers)
+    assert context.status_code == 200
+    assert context.json()["agent_configured"] is True
+    assert context.json()["counts"]["drafts"] == 1
+    assert context.json()["capabilities"]["delete"] == []
+    assert client.get("/api/editor/context").status_code == 401
+
+
+def test_content_agent_partial_updates_preserve_other_content(client, agent_headers):
+    food = client.post(
+        "/api/food",
+        json={"title": "面馆", "location": "楼下", "rating": 4},
+        headers=agent_headers,
+    ).json()
+    food_updated = client.patch(
+        f"/api/food/{food['id']}",
+        json={"rating": 5},
+        headers=agent_headers,
+    ).json()
+    assert food_updated["title"] == "面馆"
+    assert food_updated["location"] == "楼下"
+
+    trip = client.post(
+        "/api/trips",
+        json={"title": "周末", "destination": "青岛", "content_md": "海边"},
+        headers=agent_headers,
+    ).json()
+    trip_updated = client.patch(
+        f"/api/trips/{trip['id']}",
+        json={"summary": "两天刚好"},
+        headers=agent_headers,
+    ).json()
+    assert trip_updated["destination"] == "青岛"
+    assert trip_updated["content_md"] == "海边"
+
+    moment = client.post(
+        "/api/moments",
+        json={"content_md": "旧内容"},
+        headers=agent_headers,
+    ).json()
+    moment_updated = client.patch(
+        f"/api/moments/{moment['id']}",
+        json={"content_md": "新内容"},
+        headers=agent_headers,
+    ).json()
+    assert moment_updated["content_md"] == "新内容"
+
+
 def test_post_lifecycle(client, admin_headers):
     # 建草稿
     resp = client.post(

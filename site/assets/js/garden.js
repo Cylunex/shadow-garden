@@ -39,8 +39,10 @@ window.Garden = (function () {
   }
 
   function postItem(p) {
-    return '<li><a href="/blog/post.html?slug=' + encodeURIComponent(p.slug) + '">' + esc(p.title) +
-      "</a><time>" + fmtDate(p.published_at) + "</time></li>";
+    return '<li class="content-row"><a class="content-link" href="/blog/post.html?slug=' + encodeURIComponent(p.slug) +
+      '"><span class="content-title">' + esc(p.title) + "</span>" +
+      (p.summary ? '<span class="content-summary">' + esc(p.summary) + "</span>" : "") +
+      '</a><time>' + fmtDate(p.published_at) + "</time></li>";
   }
 
   function projectCard(p) {
@@ -51,7 +53,8 @@ window.Garden = (function () {
         (p.repo ? '<a href="' + esc(p.repo) + '" target="_blank" rel="noopener">源码 ↗</a>' : "") +
         "</div>";
     }
-    return '<div class="card"><h3>' + esc(p.name) + '</h3><p>' + esc(p.description) + "</p>" +
+    return '<div class="card project-card"><span class="card-kicker">PROJECT</span><h3>' + esc(p.name) +
+      '</h3><p>' + esc(p.description) + "</p>" +
       links + tagsHtml([p.status_label].concat(p.tags)) + "</div>";
   }
 
@@ -60,7 +63,7 @@ window.Garden = (function () {
       ? '<img class="thumb" src="' + esc(f.photo) + '" alt="' + esc(f.title) + '" loading="lazy">'
       : '<div class="emoji">' + esc(f.emoji) + "</div>";
     const meta = [fmtDate(f.eaten_on), f.location].filter(Boolean).map(esc).join(" · ");
-    return '<div class="card">' + media +
+    return '<div class="card food-card">' + media +
       "<h3>" + esc(f.title) + '</h3><div class="stars">' + stars(f.rating) + "</div>" +
       (meta ? '<div class="meta">' + meta + "</div>" : "") +
       "<p>" + esc(f.review) + "</p>" + tagsHtml(f.tags) + "</div>";
@@ -75,13 +78,15 @@ window.Garden = (function () {
 
   function tripItem(t) {
     const meta = [t.destination, tripDates(t)].filter(Boolean).map(esc).join(" · ");
-    return '<li><a href="/travel/trip.html?id=' + t.id + '">' + esc(t.title) +
-      (t.summary ? '<span class="meta"> —— ' + esc(t.summary) + "</span>" : "") +
+    return '<li class="content-row trip-row"><a class="content-link" href="/travel/trip.html?id=' + t.id +
+      '"><span class="content-title">' + esc(t.title) + "</span>" +
+      (t.summary ? '<span class="content-summary">' + esc(t.summary) + "</span>" : "") +
       "</a><time>" + meta + "</time></li>";
   }
 
   function momentCard(m, withTime) {
-    return '<div class="moment"><time>' + (withTime ? fmtDateTime(m.created_at) : fmtDate(m.created_at)) +
+    return '<div class="moment"><span class="moment-mark">“</span><time>' +
+      (withTime ? fmtDateTime(m.created_at) : fmtDate(m.created_at)) +
       '</time><div class="prose">' + m.content_html + "</div></div>";
   }
 
@@ -112,6 +117,26 @@ window.Garden = (function () {
     apply();
   }
   initTheme(); // garden.js 以 defer 加载，DOM 已就绪
+
+  function initShell() {
+    const path = location.pathname;
+    const section = ["/projects/", "/blog/", "/moments/", "/food/", "/travel/", "/stats/", "/about/"]
+      .find((prefix) => path.startsWith(prefix));
+    document.body.dataset.page = section ? section.slice(1, -1) : path.startsWith("/admin/") ? "admin" : "home";
+    document.querySelectorAll(".nav-links a").forEach((link) => {
+      const href = link.getAttribute("href");
+      if (section && href === section) link.setAttribute("aria-current", "page");
+    });
+    const logo = document.querySelector(".logo");
+    if (logo && !logo.querySelector(".logo-mark")) {
+      logo.innerHTML = '<span class="logo-mark">SG</span><span><b>Shadow</b><small>Garden</small></span>';
+    }
+    const header = document.querySelector("header");
+    const updateHeader = () => header && header.classList.toggle("scrolled", scrollY > 12);
+    addEventListener("scroll", updateHeader, { passive: true });
+    updateHeader();
+  }
+  initShell();
 
   /* 图片灯箱：点内容图放大，再点或 Esc 关闭 */
   document.addEventListener("click", (e) => {

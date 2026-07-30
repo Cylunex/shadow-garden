@@ -27,6 +27,15 @@ class PostIn(BaseModel):
     status: Literal["draft", "published"] = "draft"
 
 
+class PostPatch(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1)
+    slug: Optional[str] = None
+    summary: Optional[str] = None
+    content_md: Optional[str] = None
+    tags: Optional[List[str]] = None
+    status: Optional[Literal["draft", "published"]] = None
+
+
 def _serialize(row: sqlite3.Row, with_content: bool = False) -> dict:
     post = {
         "id": row["id"],
@@ -164,8 +173,7 @@ def create_post(body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
     return _serialize(row, with_content=True)
 
 
-@router.put("/{post_id}", dependencies=[Depends(require_content_editor)])
-def update_post(post_id: int, body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
+def _update_post(post_id: int, body: PostIn, conn: sqlite3.Connection) -> dict:
     row = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "文章不存在")
@@ -188,6 +196,28 @@ def update_post(post_id: int, body: PostIn, conn: sqlite3.Connection = Depends(g
     )
     row = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
     return _serialize(row, with_content=True)
+
+
+@router.put("/{post_id}", dependencies=[Depends(require_content_editor)])
+def update_post(post_id: int, body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
+    return _update_post(post_id, body, conn)
+
+
+@router.patch("/{post_id}", dependencies=[Depends(require_content_editor)])
+def patch_post(post_id: int, body: PostPatch, conn: sqlite3.Connection = Depends(get_db)):
+    row = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "文章不存在")
+    current = {
+        "title": row["title"],
+        "slug": row["slug"],
+        "summary": row["summary"],
+        "content_md": row["content_md"],
+        "tags": tags_from_json(row["tags"]),
+        "status": row["status"],
+    }
+    current.update(body.model_dump(exclude_unset=True))
+    return _update_post(post_id, PostIn(**current), conn)
 
 
 @router.delete("/{post_id}", dependencies=[Depends(require_admin)])
