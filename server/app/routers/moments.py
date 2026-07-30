@@ -3,7 +3,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from ..auth import require_admin
+from ..auth import require_admin, require_content_editor
 from ..db import get_db, inserted_id, now_iso
 from ..rendering import render_markdown
 
@@ -35,7 +35,7 @@ def list_moments(
     return {"items": [_serialize(r) for r in rows]}
 
 
-@router.post("", dependencies=[Depends(require_admin)], status_code=201)
+@router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
 def create_moment(body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
@@ -46,7 +46,7 @@ def create_moment(body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
     return _serialize(row)
 
 
-@router.put("/{moment_id}", dependencies=[Depends(require_admin)])
+@router.put("/{moment_id}", dependencies=[Depends(require_content_editor)])
 def update_moment(moment_id: int, body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         "UPDATE moments SET content_md=?, content_html=?, updated_at=? WHERE id=?",

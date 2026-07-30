@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from ..auth import require_admin
+from ..auth import require_admin, require_content_editor
 from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 
 router = APIRouter(prefix="/api/food", tags=["food"])
@@ -45,7 +45,7 @@ def list_food(conn: sqlite3.Connection = Depends(get_db)):
     return {"items": [_serialize(r) for r in rows]}
 
 
-@router.post("", dependencies=[Depends(require_admin)], status_code=201)
+@router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
 def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
@@ -61,7 +61,7 @@ def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
     return _serialize(row)
 
 
-@router.put("/{food_id}", dependencies=[Depends(require_admin)])
+@router.put("/{food_id}", dependencies=[Depends(require_content_editor)])
 def update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         """UPDATE food SET title=?, emoji=?, rating=?, location=?, review=?,

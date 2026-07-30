@@ -52,6 +52,10 @@ class Settings:
         return os.environ.get("GARDEN_ADMIN_PASSWORD", "")
 
     @property
+    def agent_token(self) -> str:
+        return os.environ.get("GARDEN_AGENT_TOKEN", "")
+
+    @property
     def session_ttl_hours(self) -> int:
         return int(os.environ.get("GARDEN_SESSION_TTL_HOURS", "72"))
 

@@ -17,6 +17,7 @@ TABLES = ("posts", "projects", "food", "trips", "moments", "about", "sessions")
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("GARDEN_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("GARDEN_ADMIN_PASSWORD", "test-pass")
+    monkeypatch.setenv("GARDEN_AGENT_TOKEN", "test-agent-token")
 
     pg_url = os.environ.get("PG_TEST_URL", "")
     if pg_url:
@@ -56,3 +57,8 @@ def admin_headers(client):
     resp = client.post("/api/auth/login", json={"password": "test-pass"})
     assert resp.status_code == 200
     return {"Authorization": f"Bearer {resp.json()['token']}"}
+
+
+@pytest.fixture()
+def agent_headers():
+    return {"Authorization": "Bearer test-agent-token"}

@@ -14,6 +14,7 @@ Group=www-data
 WorkingDirectory=/opt/shadow-garden/server
 # /etc/shadow-garden.env 内容示例：
 #   GARDEN_ADMIN_PASSWORD=一串足够长的口令
+#   GARDEN_AGENT_TOKEN=供内容 Agent 使用的独立随机令牌
 #   GARDEN_DB_URL=postgresql://shadow_garden:数据库密码@127.0.0.1:5432/shadow_garden
 #   GARDEN_REDIS_URL=redis://127.0.0.1:6379/0
 #   GARDEN_DATA_DIR=/var/lib/shadow-garden

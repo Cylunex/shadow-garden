@@ -75,6 +75,15 @@ def _extract_token(authorization: str) -> str:
     return ""
 
 
+def _agent_token_valid(token: str) -> bool:
+    configured = settings.agent_token
+    return bool(
+        configured
+        and token
+        and hmac.compare_digest(token.encode(), configured.encode())
+    )
+
+
 def require_admin(
     authorization: str = Header(default=""),
     conn=Depends(get_db),
@@ -83,11 +92,28 @@ def require_admin(
         raise HTTPException(401, "需要管理员登录")
 
 
+def require_content_editor(
+    authorization: str = Header(default=""),
+    conn=Depends(get_db),
+) -> None:
+    token = _extract_token(authorization)
+    if not (_token_valid(conn, token) or _agent_token_valid(token)):
+        raise HTTPException(401, "需要内容编辑权限")
+
+
 def optional_admin(
     authorization: str = Header(default=""),
     conn=Depends(get_db),
 ) -> bool:
     return _token_valid(conn, _extract_token(authorization))
+
+
+def optional_content_editor(
+    authorization: str = Header(default=""),
+    conn=Depends(get_db),
+) -> bool:
+    token = _extract_token(authorization)
+    return _token_valid(conn, token) or _agent_token_valid(token)
 
 
 def destroy_session(conn, authorization: Optional[str]) -> None:

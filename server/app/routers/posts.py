@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing_extensions import Literal
 
-from ..auth import get_redis, optional_admin, require_admin
+from ..auth import (
+    get_redis,
+    optional_content_editor,
+    require_admin,
+    require_content_editor,
+)
 from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 from ..rendering import reading_minutes, render_markdown, slugify, word_count
 
@@ -61,10 +66,10 @@ def _unique_slug(conn: sqlite3.Connection, wanted: str, exclude_id: Optional[int
 @router.get("")
 def list_posts(
     tag: Optional[str] = None,
-    is_admin: bool = Depends(optional_admin),
+    is_editor: bool = Depends(optional_content_editor),
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    if is_admin:
+    if is_editor:
         rows = conn.execute(
             "SELECT * FROM posts ORDER BY COALESCE(published_at, created_at) DESC"
         ).fetchall()
@@ -81,15 +86,15 @@ def list_posts(
 @router.get("/{slug}")
 def get_post(
     slug: str,
-    is_admin: bool = Depends(optional_admin),
+    is_editor: bool = Depends(optional_content_editor),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     row = conn.execute("SELECT * FROM posts WHERE slug = ?", (slug,)).fetchone()
-    if row is None or (row["status"] != "published" and not is_admin):
+    if row is None or (row["status"] != "published" and not is_editor):
         raise HTTPException(404, "文章不存在")
 
     # 公开访问计一次阅读（管理端预览不算）
-    if not is_admin and row["status"] == "published":
+    if not is_editor and row["status"] == "published":
         conn.execute("UPDATE posts SET views = views + 1 WHERE id = ?", (row["id"],))
         row = conn.execute("SELECT * FROM posts WHERE id = ?", (row["id"],)).fetchone()
 
@@ -140,7 +145,7 @@ def water_post(
     return {"waters": fresh["waters"], "watered": True}
 
 
-@router.post("", dependencies=[Depends(require_admin)], status_code=201)
+@router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
 def create_post(body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     slug = _unique_slug(conn, body.slug.strip() or slugify(body.title), None)
@@ -159,7 +164,7 @@ def create_post(body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
     return _serialize(row, with_content=True)
 
 
-@router.put("/{post_id}", dependencies=[Depends(require_admin)])
+@router.put("/{post_id}", dependencies=[Depends(require_content_editor)])
 def update_post(post_id: int, body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
     row = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
     if row is None:

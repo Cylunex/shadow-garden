@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from ..auth import require_admin
+from ..auth import require_admin, require_content_editor
 from ..db import get_db, inserted_id, now_iso
 from ..rendering import render_markdown
 
@@ -56,7 +56,7 @@ def get_trip(trip_id: int, conn: sqlite3.Connection = Depends(get_db)):
     return _serialize(row, with_content=True)
 
 
-@router.post("", dependencies=[Depends(require_admin)], status_code=201)
+@router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
 def create_trip(body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
@@ -73,7 +73,7 @@ def create_trip(body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
     return _serialize(row, with_content=True)
 
 
-@router.put("/{trip_id}", dependencies=[Depends(require_admin)])
+@router.put("/{trip_id}", dependencies=[Depends(require_content_editor)])
 def update_trip(trip_id: int, body: TripIn, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute(
         """UPDATE trips SET title=?, destination=?, start_date=?, end_date=?,

@@ -77,6 +77,9 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 
 文章详情（`GET /api/posts/{slug}`）额外返回字数、预计阅读时长、浏览数与上一篇/下一篇。
 
+内容 Agent 可通过 `GARDEN_AGENT_TOKEN` 使用 Bearer 鉴权，新增或修改博客、
+美食、旅行、说说并上传图片；删除内容、项目管理和关于页修改仍只允许管理员会话。
+
 写操作都要 `Authorization: Bearer <token>`。
 
 ## 部署

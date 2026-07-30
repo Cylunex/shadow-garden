@@ -11,6 +11,43 @@ def test_mutations_require_auth(client):
     assert client.put("/api/about", json={"content_md": "x"}).status_code == 401
 
 
+def test_content_agent_scope(client, agent_headers):
+    created = client.post(
+        "/api/posts",
+        json={"title": "Agent 草稿", "content_md": "初稿"},
+        headers=agent_headers,
+    )
+    assert created.status_code == 201
+    post = created.json()
+    assert post["status"] == "draft"
+
+    visible = client.get(f"/api/posts/{post['slug']}", headers=agent_headers)
+    assert visible.status_code == 200
+
+    updated = client.put(
+        f"/api/posts/{post['id']}",
+        json={
+            "title": "Agent 草稿",
+            "slug": post["slug"],
+            "content_md": "已修改",
+            "status": "published",
+        },
+        headers=agent_headers,
+    )
+    assert updated.status_code == 200
+    assert updated.json()["status"] == "published"
+
+    assert client.delete(
+        f"/api/posts/{post['id']}", headers=agent_headers
+    ).status_code == 401
+    assert client.post(
+        "/api/projects", json={"name": "越权"}, headers=agent_headers
+    ).status_code == 401
+    assert client.put(
+        "/api/about", json={"content_md": "越权"}, headers=agent_headers
+    ).status_code == 401
+
+
 def test_post_lifecycle(client, admin_headers):
     # 建草稿
     resp = client.post(

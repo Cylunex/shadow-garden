@@ -1,0 +1,57 @@
+---
+name: shadow-garden-content
+description: Maintain Shadow Garden content through its restricted API. Use when asked to draft, publish, list, or update Chinese blog posts, travel notes, food records, moments, or their images for the personal portal.
+---
+
+# Shadow Garden Content
+
+Use the restricted content API. Never edit the database, deployment files, or production source code for a content request.
+
+## Workflow
+
+1. Identify the content type: blog, trip, food, or moment.
+2. Extract facts from the user's message and attachments. Do not invent dates, locations, ratings, prices, people, events, or sensory details.
+3. Ask only for missing facts that materially affect accuracy.
+4. Write concise first-person Chinese unless the user requests another voice.
+5. Apply the publishing rule below.
+6. Call the bundled API client.
+7. Read the saved record back and report its public URL or draft status.
+
+Read `references/api.md` before the first mutation in a conversation or whenever updating an existing record.
+
+## Publishing Rules
+
+- Create blog posts as `draft` unless the user explicitly says to publish, post, or put them online.
+- Trips, food records, and moments become public immediately. Show the proposed text and request confirmation unless the user explicitly asked to record or publish it on the portal.
+- Treat an explicit request such as “记到网站”“发到门户”“发布这篇” as publication approval.
+- Never delete content. Tell the user deletion requires the administrator.
+- When updating, fetch the current record first and preserve every field the user did not ask to change.
+
+## API Client
+
+Run:
+
+```bash
+python "$HERMES_HOME/skills/shadow-garden-content/scripts/garden_api.py" get /api/posts
+python "$HERMES_HOME/skills/shadow-garden-content/scripts/garden_api.py" post /api/posts --json /tmp/post.json
+python "$HERMES_HOME/skills/shadow-garden-content/scripts/garden_api.py" put /api/posts/12 --json /tmp/post.json
+python "$HERMES_HOME/skills/shadow-garden-content/scripts/garden_api.py" upload /tmp/photo.jpg
+```
+
+Write request JSON to a temporary file with mode `600`, then remove it after the request. Never print, inspect, or reveal `SHADOW_GARDEN_AGENT_TOKEN`.
+
+## Content Guidelines
+
+- Blog: use a clear title, short summary, 2–5 relevant tags, natural section headings, and a specific conclusion.
+- Trip: organize chronologically when possible; distinguish observed facts from later reflections.
+- Food: keep the review concrete and short; use a 1–5 rating only when the user supplied or approved it.
+- Moment: keep it brief and preserve the user's original tone.
+- Images: upload only user-provided images, then use the returned `/uploads/...` URL.
+
+## Verification
+
+- Blog URL: `/blog/post.html?slug=<slug>`; drafts have no public URL.
+- Trip URL: `/travel/trip.html?id=<id>`.
+- Food URL: `/food/`.
+- Moment URL: `/moments/`.
+- After every mutation, verify the returned fields and state whether it is draft or public.
