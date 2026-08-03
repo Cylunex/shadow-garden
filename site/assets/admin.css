@@ -77,6 +77,12 @@ button.btn, .btn { cursor: pointer; border: none; font: inherit; font-size: .95r
   margin-top: .6rem; padding: 1rem 1.2rem;
   border: 1px dashed var(--line); border-radius: 10px;
 }
+.image-preview-grid { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .7rem; }
+.image-preview-grid:empty { display: none; }
+.image-preview-grid img {
+  width: 4.5rem; height: 4.5rem; object-fit: cover;
+  border: 1px solid var(--line); border-radius: 12px;
+}
 .form-actions { display: flex; gap: .8rem; margin-top: 1.4rem; }
 
 /* 提示条 */

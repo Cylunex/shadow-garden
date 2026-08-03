@@ -68,13 +68,16 @@ with only the fields requested by the user.
   "rating": 5,
   "location": "地点",
   "review": "评价",
-  "photo": "/uploads/example.jpg",
+  "photo": "/uploads/cover.jpg",
+  "photos": ["/uploads/detail-1.jpg", "/uploads/detail-2.jpg"],
   "tags": ["标签"],
   "eaten_on": "YYYY-MM-DD"
 }
 ```
 
 Rating must be 1–5. Do not guess it.
+`photo` is the optional cover image. `photos` is the gallery; when the cover is
+empty, the site uses the first gallery image as the cover.
 
 ## Moments
 

@@ -45,7 +45,7 @@ Write request JSON to a temporary file with mode `600`, then remove it after the
 
 - Blog: use a clear title, short summary, 2–5 relevant tags, natural section headings, and a specific conclusion.
 - Trip: organize chronologically when possible; distinguish observed facts from later reflections.
-- Food: keep the review concrete and short; use a 1–5 rating only when the user supplied or approved it.
+- Food: keep the review concrete and short; use a 1–5 rating only when the user supplied or approved it. Put the main image in `photo` and additional images in `photos`.
 - Moment: keep it brief and preserve the user's original tone.
 - Images: upload only user-provided images, then use the returned `/uploads/...` URL.
 

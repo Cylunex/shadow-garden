@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from typing import List, Optional
 
@@ -17,6 +18,7 @@ class FoodIn(BaseModel):
     location: str = ""
     review: str = ""
     photo: str = ""
+    photos: List[str] = []
     tags: List[str] = []
     eaten_on: str = ""   # YYYY-MM-DD，留空表示未填
 
@@ -28,11 +30,18 @@ class FoodPatch(BaseModel):
     location: Optional[str] = None
     review: Optional[str] = None
     photo: Optional[str] = None
+    photos: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     eaten_on: Optional[str] = None
 
 
 def _serialize(row: sqlite3.Row) -> dict:
+    try:
+        photos = json.loads(row["photos"] or "[]")
+        if not isinstance(photos, list):
+            photos = []
+    except (TypeError, ValueError):
+        photos = []
     return {
         "id": row["id"],
         "title": row["title"],
@@ -41,6 +50,7 @@ def _serialize(row: sqlite3.Row) -> dict:
         "location": row["location"],
         "review": row["review"],
         "photo": row["photo"],
+        "photos": photos,
         "tags": tags_from_json(row["tags"]),
         "eaten_on": row["eaten_on"],
         "created_at": row["created_at"],
@@ -60,12 +70,13 @@ def list_food(conn: sqlite3.Connection = Depends(get_db)):
 def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
-        """INSERT INTO food (title, emoji, rating, location, review, photo,
+        """INSERT INTO food (title, emoji, rating, location, review, photo, photos,
                              tags, eaten_on, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             body.title, body.emoji, body.rating, body.location, body.review,
-            body.photo, tags_to_json(body.tags), body.eaten_on, now, now,
+            body.photo, json.dumps(body.photos, ensure_ascii=False),
+            tags_to_json(body.tags), body.eaten_on, now, now,
         ),
     )
     row = conn.execute("SELECT * FROM food WHERE id = ?", (inserted_id(cur),)).fetchone()
@@ -75,11 +86,12 @@ def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
 def _update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection) -> dict:
     cur = conn.execute(
         """UPDATE food SET title=?, emoji=?, rating=?, location=?, review=?,
-                           photo=?, tags=?, eaten_on=?, updated_at=?
+                           photo=?, photos=?, tags=?, eaten_on=?, updated_at=?
            WHERE id=?""",
         (
             body.title, body.emoji, body.rating, body.location, body.review,
-            body.photo, tags_to_json(body.tags), body.eaten_on, now_iso(), food_id,
+            body.photo, json.dumps(body.photos, ensure_ascii=False),
+            tags_to_json(body.tags), body.eaten_on, now_iso(), food_id,
         ),
     )
     if cur.rowcount == 0:

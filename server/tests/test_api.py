@@ -193,11 +193,29 @@ def test_food_crud_and_rating_bounds(client, admin_headers):
 
     resp = client.post(
         "/api/food",
-        json={"title": "牛肉面", "rating": 5, "location": "楼下", "eaten_on": "2026-07-10"},
+        json={
+            "title": "牛肉面",
+            "rating": 5,
+            "location": "楼下",
+            "eaten_on": "2026-07-10",
+            "photo": "/uploads/cover.jpg",
+            "photos": ["/uploads/a.jpg", "/uploads/b.jpg"],
+        },
         headers=admin_headers,
     )
     assert resp.status_code == 201
-    assert client.get("/api/food").json()["items"][0]["title"] == "牛肉面"
+    food = client.get("/api/food").json()["items"][0]
+    assert food["title"] == "牛肉面"
+    assert food["photo"] == "/uploads/cover.jpg"
+    assert food["photos"] == ["/uploads/a.jpg", "/uploads/b.jpg"]
+
+    updated = client.patch(
+        f"/api/food/{food['id']}",
+        json={"photos": ["/uploads/c.jpg"]},
+        headers=admin_headers,
+    ).json()
+    assert updated["photo"] == "/uploads/cover.jpg"
+    assert updated["photos"] == ["/uploads/c.jpg"]
 
 
 def test_trip_crud(client, admin_headers):

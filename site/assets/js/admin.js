@@ -98,7 +98,8 @@
         { name: "rating", label: "评分", type: "select", options: RATING_OPTIONS, toValue: Number },
         { name: "eaten_on", label: "日期", type: "date" },
         { name: "location", label: "地点", type: "text" },
-        { name: "photo", label: "照片", type: "image" },
+        { name: "photo", label: "封面图（留空时使用相册第一张）", type: "image" },
+        { name: "photos", label: "相册（可一次选择多张）", type: "images", full: true },
         { name: "tags", label: "标签（逗号分隔）", type: "tags" },
         { name: "review", label: "点评", type: "textarea", rows: 3, full: true },
       ],
@@ -174,10 +175,13 @@
           "</div>";
         break;
       case "images":
+        const imageValues = v || [];
         control =
           '<textarea name="' + f.name + '" rows="3" placeholder="/uploads/a.jpg&#10;/uploads/b.jpg">' +
-          G.esc((v || []).join("\n")) + "</textarea>" +
-          '<div class="md-tools"><button type="button" class="btn-sm" data-images-for="' + f.name + '">上传并追加</button></div>';
+          G.esc(imageValues.join("\n")) + "</textarea>" +
+          '<div class="md-tools"><button type="button" class="btn-sm" data-images-for="' + f.name + '">选择多张并追加</button></div>' +
+          '<div class="image-preview-grid" data-images-preview="' + f.name + '">' +
+          imageValues.map((url) => '<img src="' + G.esc(url) + '" alt="相册预览">').join("") + "</div>";
         break;
       default:
         control = '<input type="text" name="' + f.name + '" value="' + G.esc(v) + '"' + req + ">";
@@ -203,27 +207,30 @@
 
   let uploadHandler = null; // 文件选择后如何处置
 
-  function pickImage(handler) {
+  function pickImage(handler, multiple) {
     uploadHandler = handler;
+    fileInput.multiple = !!multiple;
     fileInput.value = "";
     fileInput.click();
   }
 
   fileInput.addEventListener("change", async () => {
-    const file = fileInput.files[0];
-    if (!file || !uploadHandler) return;
-    const fd = new FormData();
-    fd.append("file", file);
+    const files = Array.from(fileInput.files || []);
+    if (!files.length || !uploadHandler) return;
     try {
-      const resp = await fetch("/api/uploads", {
-        method: "POST",
-        headers: token ? { Authorization: "Bearer " + token } : {},
-        body: fd,
-      });
-      if (!resp.ok) throw new Error((await resp.json()).detail || "HTTP " + resp.status);
-      const { url } = await resp.json();
-      uploadHandler(url);
-      toast("图片已上传");
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const resp = await fetch("/api/uploads", {
+          method: "POST",
+          headers: token ? { Authorization: "Bearer " + token } : {},
+          body: fd,
+        });
+        if (!resp.ok) throw new Error((await resp.json()).detail || "HTTP " + resp.status);
+        const { url } = await resp.json();
+        uploadHandler(url);
+      }
+      toast(files.length > 1 ? files.length + " 张图片已上传" : "图片已上传");
     } catch (e) {
       toast("上传失败：" + e.message, true);
     }
@@ -504,9 +511,11 @@
     const imagesFor = e.target.closest("[data-images-for]");
     if (imagesFor) {
       const textarea = form.querySelector('[name="' + imagesFor.dataset.imagesFor + '"]');
+      const preview = form.querySelector('[data-images-preview="' + imagesFor.dataset.imagesFor + '"]');
       pickImage((url) => {
         textarea.value = (textarea.value.trim() ? textarea.value.trim() + "\n" : "") + url;
-      });
+        preview.insertAdjacentHTML("beforeend", '<img src="' + G.esc(url) + '" alt="相册预览">');
+      }, true);
       return;
     }
     if (e.target.closest("[data-cancel]")) { e.preventDefault(); showList(); }

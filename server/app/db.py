@@ -47,6 +47,7 @@ _TABLES = {
   location   TEXT NOT NULL DEFAULT '',
   review     TEXT NOT NULL DEFAULT '',
   photo      TEXT NOT NULL DEFAULT '',
+  photos     TEXT NOT NULL DEFAULT '[]',
   tags       TEXT NOT NULL DEFAULT '[]',
   eaten_on   TEXT NOT NULL DEFAULT '',
   lat        DOUBLE PRECISION,
@@ -148,6 +149,7 @@ _MIGRATIONS = [
     # lat/lng：地图功能已下线，列保留以免丢已录入的数据
     ("food", "lat", "DOUBLE PRECISION"),
     ("food", "lng", "DOUBLE PRECISION"),
+    ("food", "photos", "TEXT NOT NULL DEFAULT '[]'"),
     ("trips", "lat", "DOUBLE PRECISION"),
     ("trips", "lng", "DOUBLE PRECISION"),
 ]

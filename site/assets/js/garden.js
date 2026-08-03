@@ -59,11 +59,18 @@ window.Garden = (function () {
   }
 
   function foodCard(f) {
-    const media = f.photo
-      ? '<img class="thumb" src="' + esc(f.photo) + '" alt="' + esc(f.title) + '" loading="lazy">'
+    const images = [f.photo].concat(f.photos || []).filter((url, index, all) => url && all.indexOf(url) === index);
+    const media = images.length
+      ? '<img class="thumb" src="' + esc(images[0]) + '" alt="' + esc(f.title) + '" loading="lazy">' +
+        (images.length > 1 ? '<span class="photo-count">共 ' + images.length + " 张</span>" : "")
       : '<div class="emoji">' + esc(f.emoji) + "</div>";
+    const gallery = images.length > 1
+      ? '<div class="food-thumbs">' + images.slice(1).map((url, index) =>
+          '<img src="' + esc(url) + '" alt="' + esc(f.title) + ' · 图片 ' + (index + 2) + '" loading="lazy">'
+        ).join("") + "</div>"
+      : "";
     const meta = [fmtDate(f.eaten_on), f.location].filter(Boolean).map(esc).join(" · ");
-    return '<div class="card food-card">' + media +
+    return '<div class="card food-card">' + media + gallery +
       "<h3>" + esc(f.title) + '</h3><div class="stars">' + stars(f.rating) + "</div>" +
       (meta ? '<div class="meta">' + meta + "</div>" : "") +
       "<p>" + esc(f.review) + "</p>" + tagsHtml(f.tags) + "</div>";
@@ -142,7 +149,7 @@ window.Garden = (function () {
   document.addEventListener("click", (e) => {
     const open = document.getElementById("lightbox");
     if (open) { open.remove(); return; }
-    const img = e.target.closest(".photo-grid img, .card .thumb, .prose img");
+    const img = e.target.closest(".photo-grid img, .food-thumbs img, .card .thumb, .prose img");
     if (!img) return;
     const box = document.createElement("div");
     box.id = "lightbox";
