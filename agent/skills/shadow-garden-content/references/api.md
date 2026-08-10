@@ -79,7 +79,7 @@ Rating must be 1–5. Do not guess it.
 `photo` is the optional cover image. `photos` is the gallery; when the cover is
 empty, the site uses the first gallery image as the cover.
 
-## Moments
+## Daily Notes and Scenery
 
 - List: `GET /api/moments`
 - Create: `POST /api/moments`
@@ -88,9 +88,17 @@ empty, the site uses the first gallery image as the cover.
 
 ```json
 {
-  "content_md": "短内容"
+  "title": "今天的晚霞",
+  "kind": "scenery",
+  "content_md": "下班路上遇到的一片橘色。",
+  "photos": ["/uploads/sunset.jpg"],
+  "collections": ["晚霞"]
 }
 ```
+
+`kind` is `note` for daily records or `scenery` for everyday scenery. At least
+one of `title`, `content_md`, or `photos` is required. Reuse collection names so
+the site can automatically group entries into albums such as `晚霞合集`.
 
 ## Images
 

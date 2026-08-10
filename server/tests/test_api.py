@@ -71,10 +71,24 @@ def test_content_agent_context_and_partial_updates(client, agent_headers):
     assert patched.json()["tags"] == ["Agent"]
     assert patched.json()["content_md"] == "新正文"
 
+    daily = client.post(
+        "/api/moments",
+        json={
+            "title": "晚霞",
+            "kind": "scenery",
+            "photos": ["/uploads/sunset.jpg"],
+            "collections": ["晚霞"],
+        },
+        headers=agent_headers,
+    )
+    assert daily.status_code == 201
+
     context = client.get("/api/editor/context", headers=agent_headers)
     assert context.status_code == 200
     assert context.json()["agent_configured"] is True
     assert context.json()["counts"]["drafts"] == 1
+    assert context.json()["daily_collections"] == [{"name": "晚霞", "count": 1}]
+    assert context.json()["recent_daily"][0]["kind"] == "scenery"
     assert context.json()["capabilities"]["delete"] == []
     assert client.get("/api/editor/context").status_code == 401
 
@@ -108,7 +122,13 @@ def test_content_agent_partial_updates_preserve_other_content(client, agent_head
 
     moment = client.post(
         "/api/moments",
-        json={"content_md": "旧内容"},
+        json={
+            "title": "散步时的云",
+            "kind": "scenery",
+            "content_md": "旧内容",
+            "photos": ["/uploads/cloud.jpg"],
+            "collections": ["散步", "天空"],
+        },
         headers=agent_headers,
     ).json()
     moment_updated = client.patch(
@@ -117,6 +137,10 @@ def test_content_agent_partial_updates_preserve_other_content(client, agent_head
         headers=agent_headers,
     ).json()
     assert moment_updated["content_md"] == "新内容"
+    assert moment_updated["title"] == "散步时的云"
+    assert moment_updated["kind"] == "scenery"
+    assert moment_updated["photos"] == ["/uploads/cloud.jpg"]
+    assert moment_updated["collections"] == ["散步", "天空"]
 
 
 def test_post_lifecycle(client, admin_headers):

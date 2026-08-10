@@ -92,9 +92,24 @@ window.Garden = (function () {
   }
 
   function momentCard(m, withTime) {
-    return '<div class="moment"><span class="moment-mark">“</span><time>' +
-      (withTime ? fmtDateTime(m.created_at) : fmtDate(m.created_at)) +
-      '</time><div class="prose">' + m.content_html + "</div></div>";
+    const photos = m.photos || [];
+    const collections = m.collections || [];
+    const kindLabel = m.kind === "scenery" ? "日常风景" : "日常记录";
+    const gallery = photos.length
+      ? '<div class="moment-photos">' + photos.map((url, index) =>
+          '<img src="' + esc(url) + '" alt="' + esc(m.title || kindLabel) + ' · 图片 ' + (index + 1) + '" loading="lazy">'
+        ).join("") + "</div>"
+      : "";
+    const collectionHtml = collections.length
+      ? '<div class="daily-collections">' + collections.map((name) =>
+          '<span># ' + esc(name) + "</span>").join("") + "</div>"
+      : "";
+    return '<article class="moment daily-entry kind-' + esc(m.kind || "note") + '">' +
+      '<div class="daily-entry-head"><span class="daily-kind">' + kindLabel + "</span><time>" +
+      (withTime ? fmtDateTime(m.created_at) : fmtDate(m.created_at)) + "</time></div>" +
+      (m.title ? '<h3 class="daily-title">' + esc(m.title) + "</h3>" : "") +
+      gallery + (m.content_html ? '<div class="prose">' + m.content_html + "</div>" : "") +
+      collectionHtml + "</article>";
   }
 
   function stateNote(el, msg, isError) {
@@ -149,7 +164,7 @@ window.Garden = (function () {
   document.addEventListener("click", (e) => {
     const open = document.getElementById("lightbox");
     if (open) { open.remove(); return; }
-    const img = e.target.closest(".photo-grid img, .food-thumbs img, .card .thumb, .prose img");
+    const img = e.target.closest(".photo-grid img, .moment-photos img, .food-thumbs img, .card .thumb, .prose img");
     if (!img) return;
     const box = document.createElement("div");
     box.id = "lightbox";

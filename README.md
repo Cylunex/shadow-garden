@@ -1,6 +1,6 @@
 # Shadow Garden
 
-Cylunex 的数字花园 —— 前后端完整的个人网站：博客、项目展示、说说、美食分享与旅行记录，带管理后台，持续生长。
+Cylunex 的数字花园 —— 前后端完整的个人网站：博客、项目展示、日常记录与风景合集、美食分享和旅行记录，带管理后台，持续生长。
 
 ## 技术栈与功能
 
@@ -22,7 +22,7 @@ site/                        # 前端静态站（= 服务器 webroot）
   index.html                 # 首页：聚合各版块最新内容（/api/summary）
   blog/                      # 博客列表（搜索/归档）+ 文章页（post.html?slug=…）
   projects/  food/  travel/  # 项目 / 美食 / 旅行（trip.html?id=…）
-  moments/                   # 说说（短内容随手记）
+  moments/                   # 日常（记录、风景、多图与合集）
   stats/                     # 花园数据（统计 + 照料热力图）
   about/                     # 关于页
   admin/                     # 管理后台（登录后增删改查全部内容）
@@ -63,7 +63,7 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 | `GET/POST/PUT/DELETE /api/projects` | 项目（状态、排序、链接） |
 | `GET/POST/PUT/DELETE /api/food` | 美食（评分、照片、地点） |
 | `GET/POST/PUT/DELETE /api/trips`，`GET /api/trips/{id}` | 旅行（日期、相册、Markdown 游记） |
-| `GET/POST/PUT/DELETE /api/moments` | 说说（短内容，Markdown） |
+| `GET/POST/PUT/PATCH/DELETE /api/moments` | 日常（记录/风景、Markdown、多图、合集） |
 | `GET/PUT /api/about` | 关于页（介绍 + 联系方式） |
 | `POST /api/uploads` | 图片上传（jpg/png/gif/webp，默认 ≤8MB） |
 | `GET /api/summary` | 首页聚合 |
@@ -78,7 +78,7 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 文章详情（`GET /api/posts/{slug}`）额外返回字数、预计阅读时长、浏览数与上一篇/下一篇。
 
 内容 Agent 可通过 `GARDEN_AGENT_TOKEN` 使用 Bearer 鉴权，新增或修改博客、
-美食、旅行、说说并上传图片；删除内容、项目管理和关于页修改仍只允许管理员会话。
+美食、旅行、日常记录与风景合集并上传图片；删除内容、项目管理和关于页修改仍只允许管理员会话。
 
 写操作都要 `Authorization: Bearer <token>`。
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Shadow Garden 内容维护"
-  short_description: "为 Shadow Garden 撰写并安全发布博客、游记、美食记录和说说"
+  short_description: "为 Shadow Garden 撰写并安全发布博客、游记、美食和日常合集"
   default_prompt: "根据我的素材整理内容，先核对事实，再安全写入 Shadow Garden。"

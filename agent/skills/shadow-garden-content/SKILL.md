@@ -1,6 +1,6 @@
 ---
 name: shadow-garden-content
-description: Maintain Shadow Garden content through its restricted API. Use when asked to draft, publish, list, or update Chinese blog posts, travel notes, food records, moments, or their images for the personal portal.
+description: Maintain Shadow Garden content through its restricted API. Use when asked to draft, publish, list, or update Chinese blog posts, travel notes, food records, daily notes, scenery collections, or their images for the personal portal.
 ---
 
 # Shadow Garden Content
@@ -9,7 +9,7 @@ Use the restricted content API. Never edit the database, deployment files, or pr
 
 ## Workflow
 
-1. Identify the content type: blog, trip, food, or moment.
+1. Identify the content type: blog, trip, food, or daily entry.
 2. Read `/api/editor/context` to understand current drafts and recent work.
 3. Extract facts from the user's message and attachments. Do not invent dates, locations, ratings, prices, people, events, or sensory details.
 4. Ask only for missing facts that materially affect accuracy.
@@ -23,7 +23,7 @@ Read `references/api.md` before the first mutation in a conversation or whenever
 ## Publishing Rules
 
 - Create blog posts as `draft` unless the user explicitly says to publish, post, or put them online.
-- Trips, food records, and moments become public immediately. Show the proposed text and request confirmation unless the user explicitly asked to record or publish it on the portal.
+- Trips, food records, and daily entries become public immediately. Show the proposed text and request confirmation unless the user explicitly asked to record or publish it on the portal.
 - Treat an explicit request such as “记到网站”“发到门户”“发布这篇” as publication approval.
 - Never delete content. Tell the user deletion requires the administrator.
 - When updating, prefer `PATCH` with only the requested fields. Fetch the current record first when context is needed.
@@ -46,7 +46,7 @@ Write request JSON to a temporary file with mode `600`, then remove it after the
 - Blog: use a clear title, short summary, 2–5 relevant tags, natural section headings, and a specific conclusion.
 - Trip: organize chronologically when possible; distinguish observed facts from later reflections.
 - Food: keep the review concrete and short; use a 1–5 rating only when the user supplied or approved it. Put the main image in `photo` and additional images in `photos`.
-- Moment: keep it brief and preserve the user's original tone.
+- Daily entry: use `note` for life notes and `scenery` for photos or observations of everyday scenery. Add concise collection names such as `晚霞` or `散步` when entries belong together; reuse existing names from `/api/editor/context` or the user's wording instead of inventing near-duplicates.
 - Images: upload only user-provided images, then use the returned `/uploads/...` URL.
 
 ## Verification
@@ -54,5 +54,5 @@ Write request JSON to a temporary file with mode `600`, then remove it after the
 - Blog URL: `/blog/post.html?slug=<slug>`; drafts have no public URL.
 - Trip URL: `/travel/trip.html?id=<id>`.
 - Food URL: `/food/`.
-- Moment URL: `/moments/`.
+- Daily URL: `/moments/`; collection filter: `/moments/?collection=<name>`.
 - After every mutation, verify the returned fields and state whether it is draft or public.

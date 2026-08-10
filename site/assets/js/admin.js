@@ -121,12 +121,19 @@
       ],
     },
     {
-      key: "moments", label: "说说", api: "/api/moments",
+      key: "moments", label: "日常", api: "/api/moments",
       listLine: (m) =>
-        '<span class="title">' + G.esc(m.content_md.slice(0, 40)) + (m.content_md.length > 40 ? "…" : "") + "</span>" +
-        '<div class="meta">' + G.fmtDateTime(m.created_at) + "</div>",
+        '<span class="title">' + G.esc(m.title || m.content_md.slice(0, 40) || "一组照片") +
+        (!m.title && m.content_md.length > 40 ? "…" : "") + "</span> " +
+        '<span class="badge">' + (m.kind === "scenery" ? "日常风景" : "日常记录") + "</span>" +
+        '<div class="meta">' + G.fmtDateTime(m.created_at) +
+        (m.collections.length ? " · " + m.collections.map(G.esc).join(" / ") : "") + "</div>",
       fields: [
-        { name: "content_md", label: "内容（Markdown，短一点也行）", type: "md", full: true },
+        { name: "title", label: "标题（可选）", type: "text" },
+        { name: "kind", label: "类型", type: "select", options: [["note", "日常记录"], ["scenery", "日常风景"]] },
+        { name: "collections", label: "合集（可填多个，如：晚霞, 散步）", type: "tags", full: true },
+        { name: "photos", label: "照片（可一次选择多张）", type: "images", full: true },
+        { name: "content_md", label: "内容（Markdown，可选）", type: "md", full: true },
       ],
     },
     { key: "about", label: "关于", api: "/api/about", single: true },
@@ -287,7 +294,7 @@
       ["drafts", "待审草稿", "篇"],
       ["trips", "旅行", "段"],
       ["food", "美食", "条"],
-      ["moments", "说说", "条"],
+      ["moments", "日常", "条"],
       ["projects", "项目", "个"],
     ];
     const draftHtml = data.drafts.length
@@ -315,7 +322,7 @@
       '<small>Agent 可以新增和修改内容，但不能删除，也不能改项目与关于页。</small></section></div>' +
       '<section class="quick-create"><div><span class="workspace-label">QUICK START</span><h3>自己动手种一篇</h3></div>' +
       '<div><button class="btn btn-primary" data-quick-new="posts">写博客</button>' +
-      '<button class="btn btn-ghost" data-quick-new="moments">发说说</button>' +
+      '<button class="btn btn-ghost" data-quick-new="moments">记日常</button>' +
       '<button class="btn btn-ghost" data-quick-new="food">记美食</button>' +
       '<button class="btn btn-ghost" data-quick-new="trips">写游记</button></div></section>';
   }

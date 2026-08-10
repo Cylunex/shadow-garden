@@ -340,7 +340,7 @@ footer a:hover { color: var(--text); }
 }
 .photo-grid img, .card .thumb, .prose img { cursor: zoom-in; }
 
-/* 说说 */
+/* 日常（兼容 moments 旧类名） */
 .moment {
   background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px;
   box-shadow: var(--shadow); padding: 1.1rem 1.4rem; margin-bottom: 1rem;
@@ -666,6 +666,81 @@ section.garden-section { padding: clamp(3.8rem, 7vw, 6.5rem) 0; }
   font: 500 3.2rem/1 Georgia, serif;
 }
 
+/* 日常：记录、风景与自动合集 */
+.daily-toolbar {
+  display: flex; flex-wrap: wrap; gap: .55rem;
+  margin: 1.8rem 0 0;
+}
+.daily-toolbar button, .clear-collection {
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: .5rem 1rem; color: var(--text-dim);
+  background: var(--bg-card); cursor: pointer; font: inherit; font-size: .82rem;
+}
+.daily-toolbar button.active { color: var(--bg); border-color: var(--forest); background: var(--forest); }
+.collection-section { padding: 3.5rem 0 2.5rem; }
+.collection-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem;
+}
+.collection-card {
+  overflow: hidden; padding: 0; border: 1px solid var(--line); border-radius: 20px;
+  color: var(--text); background: var(--bg-card); cursor: pointer; text-align: left;
+  font: inherit; transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+.collection-card:hover, .collection-card.active {
+  transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: var(--shadow);
+}
+.collection-cover {
+  display: grid; grid-template-columns: 1.5fr 1fr; grid-template-rows: repeat(2, 70px);
+  gap: 2px; height: 142px; background: color-mix(in srgb, var(--moss) 14%, var(--bg));
+}
+.collection-cover img { width: 100%; height: 100%; object-fit: cover; }
+.collection-cover img:first-child { grid-row: 1 / 3; }
+.collection-cover img:only-child { grid-column: 1 / 3; }
+.collection-cover.collection-empty { display: grid; place-items: center; color: var(--accent-2); font-size: 2rem; }
+.collection-card > span { display: grid; padding: 1rem 1.1rem 1.05rem; }
+.collection-card b { font: 600 1.08rem/1.3 Georgia, "Songti SC", serif; }
+.collection-card small { margin-top: .3rem; color: var(--text-dim); font-size: .72rem; }
+.daily-list-head {
+  display: flex; align-items: center; gap: .8rem;
+  margin: 2.7rem 0 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line);
+}
+.daily-list-head h2 { font: 600 1.65rem/1.2 Georgia, "Songti SC", serif; }
+.daily-list-head > span { margin-left: auto; color: var(--text-dim); font-size: .78rem; }
+.clear-collection { padding: .3rem .7rem; color: var(--accent); }
+.daily-list { display: grid; gap: 1rem; }
+.daily-entry.moment {
+  width: 100%; max-width: none; margin: 0; padding: 1.35rem;
+  border-radius: 18px; box-shadow: none;
+}
+.daily-entry.kind-scenery { border-color: color-mix(in srgb, var(--moss) 45%, var(--line)); }
+.daily-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .65rem; }
+.daily-entry-head time { margin: 0; }
+.daily-kind {
+  color: var(--accent); font-size: .68rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.kind-scenery .daily-kind { color: var(--accent-2); }
+.daily-title { margin-bottom: .8rem; font: 600 1.25rem/1.4 Georgia, "Songti SC", serif; }
+.moment-photos {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(190px, 38%);
+  gap: .55rem; overflow-x: auto; margin: .8rem 0 1rem; padding-bottom: .35rem;
+  scroll-snap-type: x proximity; scrollbar-width: thin;
+}
+.moment-photos img {
+  width: 100%; height: 220px; object-fit: cover; border-radius: 13px;
+  border: 1px solid var(--line); cursor: zoom-in; scroll-snap-align: start;
+}
+.moment-photos img:only-child { width: min(100%, 680px); }
+.daily-collections { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; }
+.daily-collections span {
+  padding: .18rem .6rem; border-radius: 999px;
+  color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 10%, transparent);
+  font-size: .7rem;
+}
+.section-moments .daily-entry { max-width: 800px; }
+.section-moments .daily-entry:nth-child(even) { margin-left: auto; }
+
 .page-head { position: relative; padding: clamp(4rem, 8vw, 7rem) 0 2.3rem; border-bottom: 1px solid var(--line); }
 .page-head::before {
   content: "SHADOW GARDEN / " attr(data-label);
@@ -680,7 +755,7 @@ section.garden-section { padding: clamp(3.8rem, 7vw, 6.5rem) 0; }
 .page-head p { max-width: 44rem; margin-top: 1rem; font-size: 1rem; }
 body[data-page="blog"] .page-head::before { content: "SHADOW GARDEN / WRITING"; }
 body[data-page="projects"] .page-head::before { content: "SHADOW GARDEN / BUILDS"; }
-body[data-page="moments"] .page-head::before { content: "SHADOW GARDEN / MOMENTS"; }
+body[data-page="moments"] .page-head::before { content: "SHADOW GARDEN / DAILY"; }
 body[data-page="food"] .page-head::before { content: "SHADOW GARDEN / TASTES"; }
 body[data-page="travel"] .page-head::before { content: "SHADOW GARDEN / JOURNEYS"; }
 body[data-page="about"] .page-head::before { content: "SHADOW GARDEN / PROFILE"; }
@@ -732,6 +807,12 @@ footer { margin-top: 5rem; padding: 2.7rem 0 3.2rem; background: color-mix(in sr
   .post-list li { align-items: flex-start; flex-direction: column; gap: .35rem; }
   .trip-row time { max-width: none; text-align: left; }
   .moment { padding-left: 3.4rem; }
+  .daily-entry.moment { padding: 1.1rem; }
+  .moment-photos { grid-auto-columns: 82%; }
+  .moment-photos img { height: 210px; }
+  .collection-grid { grid-template-columns: 1fr; }
+  .daily-list-head { align-items: flex-start; flex-wrap: wrap; }
+  .daily-list-head > span { margin-left: 0; }
   .content-summary { max-width: calc(100vw - 2.2rem); }
 }
 @media (prefers-reduced-motion: reduce) {

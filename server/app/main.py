@@ -182,6 +182,14 @@ def editor_context(conn: sqlite3.Connection = Depends(get_db)):
     recent_rows = conn.execute(
         """SELECT * FROM posts ORDER BY updated_at DESC, id DESC LIMIT 6"""
     ).fetchall()
+    recent_daily_rows = conn.execute(
+        """SELECT * FROM moments ORDER BY updated_at DESC, id DESC LIMIT 6"""
+    ).fetchall()
+    daily_collection_counts = Counter(
+        name
+        for row in conn.execute("SELECT * FROM moments")
+        for name in moments._serialize(row)["collections"]
+    )
     return {
         "agent_configured": bool(settings.agent_token),
         "counts": {
@@ -194,6 +202,11 @@ def editor_context(conn: sqlite3.Connection = Depends(get_db)):
         },
         "drafts": [posts._serialize(row) for row in draft_rows],
         "recent_posts": [posts._serialize(row) for row in recent_rows],
+        "recent_daily": [moments._serialize(row) for row in recent_daily_rows],
+        "daily_collections": [
+            {"name": name, "count": count}
+            for name, count in daily_collection_counts.most_common()
+        ],
         "capabilities": {
             "create": ["posts", "trips", "food", "moments", "uploads"],
             "update": ["posts", "trips", "food", "moments"],

@@ -70,8 +70,12 @@ _TABLES = {
   updated_at   TEXT NOT NULL
 """,
     "moments": """
+  title        TEXT NOT NULL DEFAULT '',
+  kind         TEXT NOT NULL DEFAULT 'note',
   content_md   TEXT NOT NULL DEFAULT '',
   content_html TEXT NOT NULL DEFAULT '',
+  photos       TEXT NOT NULL DEFAULT '[]',
+  collections  TEXT NOT NULL DEFAULT '[]',
   created_at   TEXT NOT NULL,
   updated_at   TEXT NOT NULL
 """,
@@ -152,6 +156,10 @@ _MIGRATIONS = [
     ("food", "photos", "TEXT NOT NULL DEFAULT '[]'"),
     ("trips", "lat", "DOUBLE PRECISION"),
     ("trips", "lng", "DOUBLE PRECISION"),
+    ("moments", "title", "TEXT NOT NULL DEFAULT ''"),
+    ("moments", "kind", "TEXT NOT NULL DEFAULT 'note'"),
+    ("moments", "photos", "TEXT NOT NULL DEFAULT '[]'"),
+    ("moments", "collections", "TEXT NOT NULL DEFAULT '[]'"),
 ]
 
 

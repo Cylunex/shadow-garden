@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>说说 · Shadow Garden</title>
+<title>日常 · Shadow Garden</title>
 <link rel="stylesheet" href="/assets/main.css">
 <script>(function(){var t=localStorage.getItem("garden-theme");if(t)document.documentElement.setAttribute("data-theme",t)})();</script>
 <script src="/assets/js/garden.js" defer></script>
@@ -16,7 +16,7 @@
     <nav class="nav-links">
       <a href="/projects/">项目</a>
       <a href="/blog/">博客</a>
-      <a href="/moments/">说说</a>
+      <a href="/moments/">日常</a>
       <a href="/food/">美食</a>
       <a href="/travel/">旅行</a>
       <a href="/about/">关于</a>
@@ -27,10 +27,27 @@
 
 <main class="wrap">
   <div class="page-head">
-    <h1>说说</h1>
-    <p>随手记下的碎碎念，长不成文章的也值得留着。</p>
+    <h1>日常</h1>
+    <p>记住普通的一天，也收集反复遇见的晚霞、树影和风。</p>
   </div>
-  <div id="list" style="margin-top:1.8rem"><p class="state-note">加载中…</p></div>
+
+  <div class="daily-toolbar" id="kind-filter">
+    <button class="active" data-kind="">全部日常</button>
+    <button data-kind="scenery">日常风景</button>
+    <button data-kind="note">日常记录</button>
+  </div>
+
+  <section class="collection-section" id="collection-section" hidden>
+    <div class="sec-head"><div><span class="section-index">COLLECTIONS</span><h2>日常合集</h2></div><span>相似的光景，慢慢聚在一起</span></div>
+    <div class="collection-grid" id="collections"></div>
+  </section>
+
+  <div class="daily-list-head">
+    <h2 id="list-title">全部日常</h2>
+    <button class="clear-collection" id="clear-collection" hidden>清除合集筛选 ×</button>
+    <span id="item-count"></span>
+  </div>
+  <div class="daily-list" id="list"><p class="state-note">加载中…</p></div>
 </main>
 
 <footer>
@@ -41,11 +58,84 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const G = window.Garden;
   const list = document.getElementById("list");
+  const collectionSection = document.getElementById("collection-section");
+  const collectionsBox = document.getElementById("collections");
+  const kindFilter = document.getElementById("kind-filter");
+  const listTitle = document.getElementById("list-title");
+  const itemCount = document.getElementById("item-count");
+  const clearCollection = document.getElementById("clear-collection");
+  let items = [];
+  let activeKind = "";
+  let activeCollection = new URLSearchParams(location.search).get("collection") || "";
+
+  function collectionLabel(name) {
+    return name.endsWith("合集") ? name : name + "合集";
+  }
+
+  function collectionEntries() {
+    const groups = new Map();
+    items.forEach((item) => (item.collections || []).forEach((name) => {
+      if (!groups.has(name)) groups.set(name, []);
+      groups.get(name).push(item);
+    }));
+    return [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], "zh-CN"));
+  }
+
+  function collectionCard([name, entries]) {
+    const photos = entries.flatMap((item) => item.photos || []).filter((url, index, all) => all.indexOf(url) === index);
+    const cover = photos.length
+      ? '<div class="collection-cover">' + photos.slice(0, 3).map((url) =>
+          '<img src="' + G.esc(url) + '" alt="" loading="lazy">').join("") + "</div>"
+      : '<div class="collection-cover collection-empty">✦</div>';
+    return '<button class="collection-card' + (name === activeCollection ? " active" : "") +
+      '" data-collection="' + G.esc(name) + '">' + cover + '<span><b>' + G.esc(collectionLabel(name)) +
+      '</b><small>' + entries.length + " 条记录 · " + photos.length + " 张照片</small></span></button>";
+  }
+
+  function renderCollections() {
+    const groups = collectionEntries();
+    collectionSection.hidden = !groups.length;
+    collectionsBox.innerHTML = groups.map(collectionCard).join("");
+  }
+
+  function render() {
+    const shown = items.filter((item) =>
+      (!activeKind || item.kind === activeKind) &&
+      (!activeCollection || (item.collections || []).includes(activeCollection))
+    );
+    listTitle.textContent = activeCollection ? collectionLabel(activeCollection) : (activeKind === "scenery" ? "日常风景" : activeKind === "note" ? "日常记录" : "全部日常");
+    itemCount.textContent = shown.length + " 条";
+    clearCollection.hidden = !activeCollection;
+    list.innerHTML = shown.length
+      ? shown.map((m) => G.momentCard(m, true)).join("")
+      : '<p class="state-note">这里还没有内容。</p>';
+    kindFilter.querySelectorAll("[data-kind]").forEach((button) =>
+      button.classList.toggle("active", button.dataset.kind === activeKind));
+    renderCollections();
+  }
+
+  kindFilter.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-kind]");
+    if (!button) return;
+    activeKind = button.dataset.kind;
+    render();
+  });
+  collectionsBox.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-collection]");
+    if (!button) return;
+    activeCollection = button.dataset.collection;
+    history.replaceState(null, "", "?collection=" + encodeURIComponent(activeCollection));
+    render();
+    document.querySelector(".daily-list-head").scrollIntoView({ behavior: "smooth" });
+  });
+  clearCollection.addEventListener("click", () => {
+    activeCollection = "";
+    history.replaceState(null, "", location.pathname);
+    render();
+  });
   try {
-    const items = (await G.api("/api/moments?limit=200")).items;
-    list.innerHTML = items.length
-      ? items.map((m) => G.momentCard(m, true)).join("")
-      : '<p class="state-note">还没有说说。</p>';
+    items = (await G.api("/api/moments?limit=200")).items;
+    render();
   } catch (e) {
     G.stateNote(list, "加载失败：" + e.message, true);
   }

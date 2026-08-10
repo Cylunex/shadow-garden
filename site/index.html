@@ -18,7 +18,7 @@
     <nav class="nav-links">
       <a href="/projects/">项目</a>
       <a href="/blog/">博客</a>
-      <a href="/moments/">说说</a>
+      <a href="/moments/">日常</a>
       <a href="/food/">美食</a>
       <a href="/travel/">旅行</a>
       <a href="/about/">关于</a>
@@ -59,7 +59,7 @@
   </section>
 
   <section class="garden-section section-moments" id="moments">
-    <div class="sec-head"><div><span class="section-index">02 / MOMENTS</span><h2>此刻发生</h2></div><span>长不成文章的，也值得留下</span><a class="more" href="/moments/">所有片刻 <b>↗</b></a></div>
+    <div class="sec-head"><div><span class="section-index">02 / DAILY</span><h2>日常采集</h2></div><span>普通日子、偶遇风景与反复出现的光</span><a class="more" href="/moments/">所有日常 <b>↗</b></a></div>
     <div id="moments-box"><p class="state-note">加载中…</p></div>
   </section>
 
@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       : '<li class="state-note">还没有文章。</li>';
     boxes.moments.innerHTML = data.moments.length
       ? data.moments.map((m) => G.momentCard(m, true)).join("")
-      : '<p class="state-note">还没有说说。</p>';
+      : '<p class="state-note">还没有日常记录。</p>';
     boxes.food.innerHTML = data.food.length
       ? data.food.map(G.foodCard).join("")
       : '<p class="state-note">还没有美食记录。</p>';

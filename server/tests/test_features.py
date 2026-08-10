@@ -59,6 +59,7 @@ def test_search(client, admin_headers):
 
 def test_moments_crud(client, admin_headers):
     assert client.post("/api/moments", json={"content_md": "x"}).status_code == 401
+    assert client.post("/api/moments", json={}, headers=admin_headers).status_code == 422
 
     resp = client.post("/api/moments", json={"content_md": "**今天天气不错**"}, headers=admin_headers)
     assert resp.status_code == 201
@@ -68,9 +69,24 @@ def test_moments_crud(client, admin_headers):
     resp = client.put(f"/api/moments/{mid}", json={"content_md": "改一下"}, headers=admin_headers)
     assert "改一下" in resp.json()["content_md"]
 
-    assert len(client.get("/api/moments").json()["items"]) == 1
+    scenery = client.post(
+        "/api/moments",
+        json={
+            "title": "窗外的晚霞",
+            "kind": "scenery",
+            "photos": ["/uploads/a.jpg", "/uploads/b.jpg"],
+            "collections": ["晚霞"],
+        },
+        headers=admin_headers,
+    )
+    assert scenery.status_code == 201
+    assert scenery.json()["content_md"] == ""
+    assert scenery.json()["photos"] == ["/uploads/a.jpg", "/uploads/b.jpg"]
+    assert scenery.json()["collections"] == ["晚霞"]
+
+    assert len(client.get("/api/moments").json()["items"]) == 2
     assert client.delete(f"/api/moments/{mid}", headers=admin_headers).status_code == 200
-    assert client.get("/api/moments").json()["items"] == []
+    assert len(client.get("/api/moments").json()["items"]) == 1
 
 
 def test_feed_and_sitemap(client, admin_headers):

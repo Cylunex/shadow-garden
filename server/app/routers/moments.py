@@ -1,8 +1,10 @@
+import json
 import sqlite3
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from typing_extensions import Literal
 
 from ..auth import require_admin, require_content_editor
 from ..db import get_db, inserted_id, now_iso
@@ -12,18 +14,43 @@ router = APIRouter(prefix="/api/moments", tags=["moments"])
 
 
 class MomentIn(BaseModel):
-    content_md: str = Field(min_length=1)
+    title: str = ""
+    kind: Literal["note", "scenery"] = "note"
+    content_md: str = ""
+    photos: List[str] = []
+    collections: List[str] = []
 
 
 class MomentPatch(BaseModel):
-    content_md: Optional[str] = Field(default=None, min_length=1)
+    title: Optional[str] = None
+    kind: Optional[Literal["note", "scenery"]] = None
+    content_md: Optional[str] = None
+    photos: Optional[List[str]] = None
+    collections: Optional[List[str]] = None
+
+
+def _json_list(raw: str) -> list:
+    try:
+        value = json.loads(raw or "[]")
+        return value if isinstance(value, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
+def _validate(body: MomentIn) -> None:
+    if not (body.title.strip() or body.content_md.strip() or body.photos):
+        raise HTTPException(422, "标题、内容或照片至少填写一项")
 
 
 def _serialize(row: sqlite3.Row) -> dict:
     return {
         "id": row["id"],
+        "title": row["title"],
+        "kind": row["kind"],
         "content_md": row["content_md"],
         "content_html": row["content_html"],
+        "photos": _json_list(row["photos"]),
+        "collections": _json_list(row["collections"]),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -42,10 +69,17 @@ def list_moments(
 
 @router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
 def create_moment(body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
+    _validate(body)
     now = now_iso()
     cur = conn.execute(
-        "INSERT INTO moments (content_md, content_html, created_at, updated_at) VALUES (?, ?, ?, ?) RETURNING id",
-        (body.content_md, render_markdown(body.content_md), now, now),
+        """INSERT INTO moments (title, kind, content_md, content_html, photos,
+                                collections, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+        (
+            body.title, body.kind, body.content_md, render_markdown(body.content_md),
+            json.dumps(body.photos, ensure_ascii=False),
+            json.dumps(body.collections, ensure_ascii=False), now, now,
+        ),
     )
     row = conn.execute("SELECT * FROM moments WHERE id = ?", (inserted_id(cur),)).fetchone()
     return _serialize(row)
@@ -53,12 +87,18 @@ def create_moment(body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
 
 @router.put("/{moment_id}", dependencies=[Depends(require_content_editor)])
 def update_moment(moment_id: int, body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
+    _validate(body)
     cur = conn.execute(
-        "UPDATE moments SET content_md=?, content_html=?, updated_at=? WHERE id=?",
-        (body.content_md, render_markdown(body.content_md), now_iso(), moment_id),
+        """UPDATE moments SET title=?, kind=?, content_md=?, content_html=?,
+                              photos=?, collections=?, updated_at=? WHERE id=?""",
+        (
+            body.title, body.kind, body.content_md, render_markdown(body.content_md),
+            json.dumps(body.photos, ensure_ascii=False),
+            json.dumps(body.collections, ensure_ascii=False), now_iso(), moment_id,
+        ),
     )
     if cur.rowcount == 0:
-        raise HTTPException(404, "说说不存在")
+        raise HTTPException(404, "日常记录不存在")
     row = conn.execute("SELECT * FROM moments WHERE id = ?", (moment_id,)).fetchone()
     return _serialize(row)
 
@@ -71,14 +111,15 @@ def patch_moment(
 ):
     row = conn.execute("SELECT * FROM moments WHERE id = ?", (moment_id,)).fetchone()
     if row is None:
-        raise HTTPException(404, "说说不存在")
-    content_md = body.content_md if body.content_md is not None else row["content_md"]
-    return update_moment(moment_id, MomentIn(content_md=content_md), conn)
+        raise HTTPException(404, "日常记录不存在")
+    current = _serialize(row)
+    current.update(body.model_dump(exclude_unset=True))
+    return update_moment(moment_id, MomentIn(**current), conn)
 
 
 @router.delete("/{moment_id}", dependencies=[Depends(require_admin)])
 def delete_moment(moment_id: int, conn: sqlite3.Connection = Depends(get_db)):
     cur = conn.execute("DELETE FROM moments WHERE id = ?", (moment_id,))
     if cur.rowcount == 0:
-        raise HTTPException(404, "说说不存在")
+        raise HTTPException(404, "日常记录不存在")
     return {"ok": True}
