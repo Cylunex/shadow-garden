@@ -50,7 +50,7 @@ window.Garden = (function () {
     if (p.link || p.repo) {
       links = '<div class="links-row">' +
         (p.link ? '<a href="' + esc(p.link) + '" target="_blank" rel="noopener">访问 ↗</a>' : "") +
-        (p.repo ? '<a href="' + esc(p.repo) + '" target="_blank" rel="noopener">源码 ↗</a>' : "") +
+        (p.repo ? '<a href="' + esc(p.repo) + '" target="_blank" rel="noopener">GitHub ↗</a>' : "") +
         "</div>";
     }
     return '<div class="card project-card"><span class="card-kicker">PROJECT</span><h3>' + esc(p.name) +
