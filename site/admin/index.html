@@ -28,19 +28,15 @@
 
   <!-- 登录 -->
   <div id="login-view" hidden>
-    <form class="login-card" id="login-form">
+    <div class="login-card">
       <span class="login-mark">SG / CONTROL ROOM</span>
       <h1>回到花园</h1>
-      <p>管理内容、审阅草稿，也可以让 Hermes 帮你记录生活。</p>
-      <div class="field">
-        <label for="password">管理口令</label>
-        <input type="password" id="password" autocomplete="current-password" placeholder="输入管理口令" required>
-      </div>
+      <p>通过 Shadow Identity 进入内容工作台，Hermes 继续使用独立机器凭据维护内容。</p>
       <div class="form-actions">
-        <button class="btn btn-primary" type="submit">进入</button>
+        <a class="btn btn-primary" href="/auth/login?return_to=%2Fadmin%2F">统一登录</a>
       </div>
       <p class="state-note error" id="login-error" hidden></p>
-    </form>
+    </div>
   </div>
 
   <!-- 主界面 -->

@@ -16,8 +16,18 @@ TABLES = ("posts", "projects", "food", "trips", "moments", "about", "sessions")
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("GARDEN_DATA_DIR", str(tmp_path))
-    monkeypatch.setenv("GARDEN_ADMIN_PASSWORD", "test-pass")
     monkeypatch.setenv("GARDEN_AGENT_TOKEN", "test-agent-token")
+    secret_file = tmp_path / "oidc-client-secret"
+    secret_file.write_text("test-client-secret", encoding="utf-8")
+    monkeypatch.setenv("GARDEN_CANONICAL_URL", "http://testserver")
+    monkeypatch.setenv("GARDEN_OIDC_ISSUER", "http://identity.test")
+    monkeypatch.setenv("GARDEN_OIDC_CLIENT_ID", "shadow-garden")
+    monkeypatch.setenv("GARDEN_OIDC_CLIENT_SECRET_FILE", str(secret_file))
+    monkeypatch.setenv("GARDEN_OIDC_REDIRECT_URI", "http://testserver/auth/callback")
+    monkeypatch.setenv("GARDEN_OIDC_POST_LOGOUT_REDIRECT_URI", "http://testserver/")
+    monkeypatch.setenv("GARDEN_OIDC_REQUIRED_GROUP", "garden-admins")
+    monkeypatch.setenv("GARDEN_OIDC_SESSION_DB", str(tmp_path / "web_auth.db"))
+    monkeypatch.setenv("GARDEN_OIDC_ALLOW_HTTP_FOR_TESTS", "1")
 
     pg_url = os.environ.get("PG_TEST_URL", "")
     if pg_url:
@@ -47,16 +57,44 @@ def client(tmp_path, monkeypatch):
         redis.Redis.from_url(redis_url).flushdb()
 
     from app.main import app
+    from app.oidc import reset_oidc_service
+
+    reset_oidc_service()
 
     with TestClient(app) as c:
         yield c
+    reset_oidc_service()
 
 
 @pytest.fixture()
 def admin_headers(client):
-    resp = client.post("/api/auth/login", json={"password": "test-pass"})
-    assert resp.status_code == 200
-    return {"Authorization": f"Bearer {resp.json()['token']}"}
+    from app.oidc import BrowserIdentity, SESSION_COOKIE, get_oidc_service
+
+    identity = BrowserIdentity(
+        shadow_user_id="test-admin",
+        issuer="http://identity.test",
+        subject="admin-subject",
+        username="admin",
+        display_name="Test Admin",
+        email="admin@example.test",
+        groups=("garden-admins",),
+    )
+    service = get_oidc_service()
+    stored_identity = service.store.upsert_identity(
+        {
+            "iss": identity.issuer,
+            "sub": identity.subject,
+            "preferred_username": identity.username,
+            "name": identity.display_name,
+            "email": identity.email,
+            "groups": list(identity.groups),
+        }
+    )
+    session = service.store.create_session(stored_identity, ttl_seconds=300)
+    return {
+        "Cookie": f"{SESSION_COOKIE}={session.session_token}",
+        "Origin": "http://testserver",
+    }
 
 
 @pytest.fixture()

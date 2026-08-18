@@ -1,6 +1,6 @@
-def test_login_wrong_password(client):
+def test_legacy_password_login_is_removed(client):
     resp = client.post("/api/auth/login", json={"password": "nope"})
-    assert resp.status_code == 401
+    assert resp.status_code == 405
 
 
 def test_mutations_require_auth(client):
@@ -299,8 +299,13 @@ def test_summary_shape(client, admin_headers):
     assert len(data["posts"]) == 1
 
 
-def test_logout_invalidates_token(client, admin_headers):
+def test_logout_invalidates_browser_session(client, admin_headers):
     assert client.get("/api/auth/me", headers=admin_headers).json()["admin"] is True
-    client.post("/api/auth/logout", headers=admin_headers)
+    client.post("/auth/logout", headers=admin_headers)
     assert client.get("/api/auth/me", headers=admin_headers).json()["admin"] is False
     assert client.post("/api/posts", json={"title": "x"}, headers=admin_headers).status_code == 401
+
+
+def test_browser_writes_require_same_origin(client, admin_headers):
+    headers = {"Cookie": admin_headers["Cookie"]}
+    assert client.post("/api/posts", json={"title": "x"}, headers=headers).status_code == 403

@@ -2,7 +2,7 @@
 
 本地开发（在 server/ 目录）：
     uvicorn app.main:app --reload --port 8300
-生产环境由 nginx 托管 site/ 与 /uploads/，仅反代 /api/ 与 feed/sitemap；
+生产环境由 nginx 托管 site/ 与 /uploads/，反代 /api/、/auth/、探活与 feed/sitemap；
 uvicorn 同时挂载 site/ 是为了本地一条命令起整站。
 """
 import random
@@ -15,13 +15,13 @@ from urllib.parse import quote
 from xml.sax.saxutils import escape
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .auth import require_admin, require_content_editor
+from .auth import get_redis, require_admin, require_content_editor
 from .config import SITE_DIR, settings
-from .db import get_db, init_db, tags_from_json
+from .db import connect, get_db, init_db, tags_from_json
 from .rendering import render_markdown, word_count
 from .routers import about, auth, food, moments, posts, projects, travel, uploads
 
@@ -41,6 +41,39 @@ app = FastAPI(title="Shadow Garden API", lifespan=lifespan)
 for router in (auth.router, posts.router, projects.router, food.router,
                travel.router, moments.router, about.router, uploads.router):
     app.include_router(router)
+
+
+@app.get("/healthz")
+def healthz():
+    """Public liveness endpoint without dependency access."""
+    return {"status": "ok"}
+
+
+@app.get("/readyz")
+def readyz():
+    """Internal readiness endpoint for database and Redis dependencies."""
+    database_ready = False
+    redis_ready = False
+    connection = None
+    try:
+        connection = connect()
+        connection.execute("SELECT 1")
+        database_ready = True
+    except Exception:
+        pass
+    finally:
+        if connection is not None:
+            connection.close()
+    try:
+        redis_client = get_redis()
+        redis_ready = redis_client is None or bool(redis_client.ping())
+    except Exception:
+        pass
+    ready = database_ready and redis_ready
+    return JSONResponse(
+        {"status": "ready" if ready else "unavailable"},
+        status_code=200 if ready else 503,
+    )
 
 
 @app.get("/api/summary")

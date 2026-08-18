@@ -48,16 +48,46 @@ class Settings:
         return os.environ.get("GARDEN_REDIS_URL", "")
 
     @property
-    def admin_password(self) -> str:
-        return os.environ.get("GARDEN_ADMIN_PASSWORD", "")
-
-    @property
     def agent_token(self) -> str:
         return os.environ.get("GARDEN_AGENT_TOKEN", "")
 
     @property
-    def session_ttl_hours(self) -> int:
-        return int(os.environ.get("GARDEN_SESSION_TTL_HOURS", "72"))
+    def canonical_url(self) -> str:
+        return os.environ.get("GARDEN_CANONICAL_URL", "").rstrip("/")
+
+    @property
+    def oidc_issuer(self) -> str:
+        return os.environ.get("GARDEN_OIDC_ISSUER", "").rstrip("/")
+
+    @property
+    def oidc_client_id(self) -> str:
+        return os.environ.get("GARDEN_OIDC_CLIENT_ID", "shadow-garden")
+
+    @property
+    def oidc_client_secret_file(self) -> str:
+        return os.environ.get("GARDEN_OIDC_CLIENT_SECRET_FILE", "")
+
+    @property
+    def oidc_redirect_uri(self) -> str:
+        return os.environ.get("GARDEN_OIDC_REDIRECT_URI", "")
+
+    @property
+    def oidc_post_logout_redirect_uri(self) -> str:
+        return os.environ.get("GARDEN_OIDC_POST_LOGOUT_REDIRECT_URI", "")
+
+    @property
+    def oidc_required_group(self) -> str:
+        return os.environ.get("GARDEN_OIDC_REQUIRED_GROUP", "garden-admins")
+
+    @property
+    def oidc_session_db(self) -> str:
+        return os.environ.get(
+            "GARDEN_OIDC_SESSION_DB", str(self.data_dir / "web_auth.db")
+        )
+
+    @property
+    def oidc_session_ttl_seconds(self) -> int:
+        return int(os.environ.get("GARDEN_OIDC_SESSION_TTL_SECONDS", "43200"))
 
     @property
     def max_upload_mb(self) -> int:

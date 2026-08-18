@@ -5,7 +5,7 @@ Cylunex 的数字花园 —— 前后端完整的个人网站：博客、项目�
 ## 技术栈与功能
 
 - **后端**：FastAPI；数据库双后端——本地开发/测试默认 SQLite（零依赖），生产配 `GARDEN_DB_URL` 走 PostgreSQL；Markdown 服务端渲染 + pygments 代码高亮
-- **鉴权**：公开只读，新增/编辑/删除需口令登录换 Bearer 会话；配 `GARDEN_REDIS_URL` 后会话存 Redis（原生 TTL），并启用登录失败限流（每 IP 10 次 / 10 分钟）
+- **鉴权**：公开页面保持匿名，管理后台使用 Shadow Identity 原生 OIDC Authorization Code + PKCE；浏览器只保存 HttpOnly 会话 Cookie，内容 Agent 使用独立 Bearer
 - **前端**：无构建的纯 HTML/CSS/JS，改完即部署；页面通过 `/api` 拉取内容；深色/浅色主题手动切换（默认跟随系统）
 - **博客体验**：站内全文搜索、标签筛选、按年归档、目录 TOC、字数/阅读时长、浏览计数、上一篇/下一篇
 - **花园数据**：`/stats/` 统计页——文章/字数/阅读/浇水/园龄等面板 + GitHub 风格的年度照料热力图 + 标签榜
@@ -58,7 +58,8 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 
 | 路径 | 说明 |
 | --- | --- |
-| `POST /api/auth/login` `/logout` `GET /api/auth/me` | 口令换会话 token（Bearer） |
+| `GET /auth/login` `/auth/callback`，`POST /auth/logout` `/logout/all` | Shadow Identity OIDC 登录与退出 |
+| `GET /api/auth/me` | 当前后台会话状态 |
 | `GET/POST /api/posts`，`GET /api/posts/{slug}`，`PUT/DELETE /api/posts/{id}` | 博客（草稿/发布、标签、Markdown） |
 | `GET/POST/PUT/DELETE /api/projects` | 项目（状态、排序、链接） |
 | `GET/POST/PUT/DELETE /api/food` | 美食（评分、照片、地点） |
@@ -80,14 +81,16 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 内容 Agent 可通过 `GARDEN_AGENT_TOKEN` 使用 Bearer 鉴权，新增或修改博客、
 美食、旅行、日常记录与风景合集并上传图片；删除内容、项目管理和关于页修改仍只允许管理员会话。
 
-写操作都要 `Authorization: Bearer <token>`。
+浏览器写操作使用 OIDC 会话 Cookie，并校验规范 Origin；内容 Agent 写操作继续使用
+`Authorization: Bearer <token>`，两类身份不会互相替代。
 
 ## 部署
 
 首次：
 
 1. `cp scripts/deploy.env.example scripts/deploy.env`，填 SSH 主机、webroot；要部署后端就再填 `DEPLOY_SERVER_DIR` / `DEPLOY_SERVICE`
-2. 服务器上按 `deploy/shadow-garden.service.example` 配好 systemd（口令写在 `/etc/shadow-garden.env`），nginx 参考 `deploy/nginx.conf.example`
+2. 在 Shadow Identity 登记 `shadow-garden` OIDC client 和 `garden-admins` 组，客户端原始 secret 只写服务器受限文件
+3. 服务器上按 `deploy/shadow-garden.service.example` 配好 systemd，nginx 参考 `deploy/nginx.conf.example`，代理 `/auth/`、`/healthz` 并只对内开放 `/readyz`
 
 之后每次改动只需：
 

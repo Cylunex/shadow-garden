@@ -88,11 +88,6 @@ CREATE TABLE IF NOT EXISTS about (
   content_html TEXT NOT NULL DEFAULT '',
   links        TEXT NOT NULL DEFAULT '[]',
   updated_at   TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS sessions (
-  token      TEXT PRIMARY KEY,
-  created_at TEXT NOT NULL,
-  expires_at TEXT NOT NULL
 )
 """
 

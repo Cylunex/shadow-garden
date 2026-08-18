@@ -1,8 +1,6 @@
 /* 花园后台：登录 + 五模块增删改查 + Markdown 预览 + 图片上传 */
 (function () {
   const G = window.Garden;
-  const TOKEN_KEY = "garden_token";
-  let token = localStorage.getItem(TOKEN_KEY) || "";
 
   const $ = (sel) => document.querySelector(sel);
   const loginView = $("#login-view");
@@ -15,15 +13,8 @@
 
   /* ---------- 基础设施 ---------- */
 
-  function setToken(t) {
-    token = t;
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
-  }
-
   async function api(path, method, body) {
-    const opts = { method: method || "GET", headers: {} };
-    if (token) opts.headers["Authorization"] = "Bearer " + token;
+    const opts = { method: method || "GET", headers: {}, credentials: "same-origin" };
     if (body !== undefined) {
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(body);
@@ -32,7 +23,6 @@
       return await G.api(path, opts);
     } catch (e) {
       if (e.status === 401) {
-        setToken("");
         showLogin("登录已过期，请重新登录");
       }
       throw e;
@@ -230,7 +220,7 @@
         fd.append("file", file);
         const resp = await fetch("/api/uploads", {
           method: "POST",
-          headers: token ? { Authorization: "Bearer " + token } : {},
+          credentials: "same-origin",
           body: fd,
         });
         if (!resp.ok) throw new Error((await resp.json()).detail || "HTTP " + resp.status);
@@ -547,22 +537,9 @@
     showOverview();
   }
 
-  $("#login-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      const { token: t } = await api("/api/auth/login", "POST", { password: $("#password").value });
-      setToken(t);
-      $("#password").value = "";
-      showMain();
-    } catch (err) {
-      showLogin(err.message);
-    }
-  });
-
   logoutLink.addEventListener("click", async (e) => {
     e.preventDefault();
-    try { await api("/api/auth/logout", "POST"); } catch (err) { /* 忽略 */ }
-    setToken("");
+    try { await api("/auth/logout", "POST"); } catch (err) { /* 忽略 */ }
     showLogin();
     toast("已退出");
   });
@@ -570,7 +547,6 @@
   /* ---------- 启动 ---------- */
 
   (async function init() {
-    if (!token) return showLogin();
     try {
       const { admin } = await api("/api/auth/me");
       admin ? showMain() : showLogin();
