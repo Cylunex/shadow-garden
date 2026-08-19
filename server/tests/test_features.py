@@ -106,7 +106,9 @@ def test_export_requires_admin_and_is_complete(client, admin_headers):
 
     client.post("/api/moments", json={"content_md": "备份我"}, headers=admin_headers)
     data = client.get("/api/export", headers=admin_headers).json()
-    assert {"posts", "projects", "food", "trips", "moments", "about"} <= set(data)
+    assert {"posts", "projects", "food", "trips", "moments", "about", "asset_files"} <= set(
+        data
+    )
     assert data["moments"][0]["content_md"] == "备份我"
 
 

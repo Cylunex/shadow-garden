@@ -47,7 +47,7 @@ Write request JSON to a temporary file with mode `600`, then remove it after the
 - Trip: organize chronologically when possible; distinguish observed facts from later reflections.
 - Food: keep the review concrete and short; use a 1–5 rating only when the user supplied or approved it. Put the main image in `photo` and additional images in `photos`.
 - Daily entry: use `note` for life notes and `scenery` for photos or observations of everyday scenery. Add concise collection names such as `晚霞` or `散步` when entries belong together; reuse existing names from `/api/editor/context` or the user's wording instead of inventing near-duplicates.
-- Images: upload only user-provided images, then use the returned `/uploads/...` URL.
+- Images: upload only user-provided images, then use the returned Shadow Asset URL unchanged.
 
 ## Verification
 

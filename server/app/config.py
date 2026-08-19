@@ -1,6 +1,8 @@
 """配置：全部来自环境变量，可选地从 server/.env 读取（不入库）。"""
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
+from uuid import UUID
 
 BASE_DIR = Path(__file__).resolve().parent.parent   # server/
 SITE_DIR = BASE_DIR.parent / "site"
@@ -92,6 +94,43 @@ class Settings:
     @property
     def max_upload_mb(self) -> int:
         return int(os.environ.get("GARDEN_MAX_UPLOAD_MB", "8"))
+
+    @property
+    def asset_mode(self) -> str:
+        return os.environ.get("GARDEN_ASSET_MODE", "platform").strip().lower()
+
+    @property
+    def asset_base_url(self) -> str:
+        return os.environ.get("GARDEN_ASSET_BASE_URL", "").rstrip("/")
+
+    @property
+    def asset_service_token_file(self) -> str:
+        return os.environ.get("GARDEN_ASSET_SERVICE_TOKEN_FILE", "")
+
+    @property
+    def asset_owner_id(self) -> str:
+        return os.environ.get("GARDEN_ASSET_OWNER_ID", "").strip()
+
+    def validate_asset_config(self) -> None:
+        if self.asset_mode == "local":
+            return
+        if self.asset_mode != "platform":
+            raise ValueError("GARDEN_ASSET_MODE must be platform or local")
+        parsed = urlsplit(self.asset_base_url)
+        local_http = parsed.scheme == "http" and parsed.hostname in {
+            "127.0.0.1",
+            "localhost",
+            "testserver",
+        }
+        if not parsed.hostname or (parsed.scheme != "https" and not local_http):
+            raise ValueError("GARDEN_ASSET_BASE_URL must use HTTPS except locally")
+        token_file = Path(self.asset_service_token_file).expanduser()
+        if not token_file.is_file():
+            raise ValueError("GARDEN_ASSET_SERVICE_TOKEN_FILE is unavailable")
+        try:
+            UUID(self.asset_owner_id)
+        except ValueError as exc:
+            raise ValueError("GARDEN_ASSET_OWNER_ID must be a UUID") from exc
 
 
 settings = Settings()

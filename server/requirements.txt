@@ -7,3 +7,4 @@ psycopg[binary]>=3.1
 redis>=5.0
 requests>=2.31
 PyJWT[crypto]>=2.8,<3
+shadow-platform @ git+https://github.com/Cylunex/shadow-platform.git@e4261f9

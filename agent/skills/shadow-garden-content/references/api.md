@@ -50,7 +50,7 @@ with only the fields requested by the user.
   "end_date": "YYYY-MM-DD",
   "summary": "摘要",
   "content_md": "Markdown 游记",
-  "photos": ["/uploads/example.jpg"]
+  "photos": ["https://media.example.com/v1/asset-content/example-version?operation=inline"]
 }
 ```
 
@@ -68,8 +68,8 @@ with only the fields requested by the user.
   "rating": 5,
   "location": "地点",
   "review": "评价",
-  "photo": "/uploads/cover.jpg",
-  "photos": ["/uploads/detail-1.jpg", "/uploads/detail-2.jpg"],
+  "photo": "https://media.example.com/v1/asset-content/cover-version?operation=inline",
+  "photos": ["https://media.example.com/v1/asset-content/detail-version?operation=inline"],
   "tags": ["标签"],
   "eaten_on": "YYYY-MM-DD"
 }
@@ -91,7 +91,7 @@ empty, the site uses the first gallery image as the cover.
   "title": "今天的晚霞",
   "kind": "scenery",
   "content_md": "下班路上遇到的一片橘色。",
-  "photos": ["/uploads/sunset.jpg"],
+  "photos": ["https://media.example.com/v1/asset-content/sunset-version?operation=inline"],
   "collections": ["晚霞"]
 }
 ```
@@ -108,4 +108,8 @@ Upload a local user-provided image with:
 python "$HERMES_HOME/skills/shadow-garden-content/scripts/garden_api.py" upload /path/to/photo.jpg
 ```
 
-The result contains a relative URL in `url`. Use it in the content payload.
+The upload endpoint now stores new originals in Shadow Asset v1 and returns its public
+content URL. Historical `/uploads/...` values remain readable but should not be created by
+new clients.
+
+The result contains an absolute Asset content URL in `url`. Use it unchanged in the content payload.

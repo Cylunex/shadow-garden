@@ -31,6 +31,7 @@ SITE_DESC = "Cylunex 的数字花园：博客、项目、美食与旅行"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    settings.validate_asset_config()
     init_db()
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
     yield
@@ -346,6 +347,7 @@ def export_all(conn: sqlite3.Connection = Depends(get_db)):
         "trips": dump("trips"),
         "moments": dump("moments"),
         "about": dump("about"),
+        "asset_files": dump("asset_files"),
     }
 
 

@@ -88,6 +88,17 @@ CREATE TABLE IF NOT EXISTS about (
   content_html TEXT NOT NULL DEFAULT '',
   links        TEXT NOT NULL DEFAULT '[]',
   updated_at   TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS asset_files (
+  id                TEXT PRIMARY KEY,
+  asset_id          TEXT NOT NULL UNIQUE,
+  version_id        TEXT NOT NULL,
+  reference_id      TEXT NOT NULL UNIQUE,
+  url               TEXT NOT NULL UNIQUE,
+  original_filename TEXT NOT NULL,
+  content_type      TEXT NOT NULL,
+  size_bytes        INTEGER NOT NULL,
+  created_at        TEXT NOT NULL
 )
 """
 

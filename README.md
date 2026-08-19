@@ -6,6 +6,7 @@ Cylunex 的数字花园 —— 前后端完整的个人网站：博客、项目�
 
 - **后端**：FastAPI；数据库双后端——本地开发/测试默认 SQLite（零依赖），生产配 `GARDEN_DB_URL` 走 PostgreSQL；Markdown 服务端渲染 + pygments 代码高亮
 - **鉴权**：公开页面保持匿名，管理后台使用 Shadow Identity 原生 OIDC Authorization Code + PKCE；浏览器只保存 HttpOnly 会话 Cookie，内容 Agent 使用独立 Bearer
+- **资产**：新图片通过 Shadow Platform Asset v1 保存原件、版本、业务引用与公开访问地址；历史 `/uploads/` 图片继续兼容读取
 - **前端**：无构建的纯 HTML/CSS/JS，改完即部署；页面通过 `/api` 拉取内容；深色/浅色主题手动切换（默认跟随系统）
 - **博客体验**：站内全文搜索、标签筛选、按年归档、目录 TOC、字数/阅读时长、浏览计数、上一篇/下一篇
 - **花园数据**：`/stats/` 统计页——文章/字数/阅读/浇水/园龄等面板 + GitHub 风格的年度照料热力图 + 标签榜
@@ -66,7 +67,7 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 | `GET/POST/PUT/DELETE /api/trips`，`GET /api/trips/{id}` | 旅行（日期、相册、Markdown 游记） |
 | `GET/POST/PUT/PATCH/DELETE /api/moments` | 日常（记录/风景、Markdown、多图、合集） |
 | `GET/PUT /api/about` | 关于页（介绍 + 联系方式） |
-| `POST /api/uploads` | 图片上传（jpg/png/gif/webp，默认 ≤8MB） |
+| `POST /api/uploads` | 上传图片到 Shadow Asset v1（jpg/png/gif/webp，默认 ≤8MB） |
 | `GET /api/summary` | 首页聚合 |
 | `GET /api/stats` | 花园数据（统计 + 热力图 + 标签榜） |
 | `POST /api/posts/{slug}/water` | 给文章浇水（匿名点赞，Redis 防刷） |
@@ -102,4 +103,5 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 
 - 前端无构建步骤：纯静态 HTML/CSS/JS；新版块 = 一个页面 + 一个路由 + 后台一个模块配置
 - 服务器地址、域名、口令一律不入库，只存在于 `deploy.env`、`server/.env` 与服务器本身
-- 内容数据都在 `GARDEN_DATA_DIR`（默认 `server/data/`）：`garden.db` + `uploads/`，备份拷这个目录即可
+- Garden 业务数据位于 `GARDEN_DATA_DIR`；旧 `/uploads/` 仍需备份，新图片字节由 Shadow Asset 统一备份
+- `asset_files` 保存 Garden 媒体资源到 `asset_id/version_id/reference_id` 的映射，业务表继续使用可展示 URL，前端无需变化

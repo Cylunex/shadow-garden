@@ -10,13 +10,23 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-TABLES = ("posts", "projects", "food", "trips", "moments", "about", "sessions")
+TABLES = (
+    "posts",
+    "projects",
+    "food",
+    "trips",
+    "moments",
+    "about",
+    "asset_files",
+    "sessions",
+)
 
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("GARDEN_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("GARDEN_AGENT_TOKEN", "test-agent-token")
+    monkeypatch.setenv("GARDEN_ASSET_MODE", "local")
     secret_file = tmp_path / "oidc-client-secret"
     secret_file.write_text("test-client-secret", encoding="utf-8")
     monkeypatch.setenv("GARDEN_CANONICAL_URL", "http://testserver")

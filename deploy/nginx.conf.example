@@ -25,7 +25,7 @@ server {
         proxy_pass http://127.0.0.1:8300;
     }
 
-    # 上传的图片由 nginx 直接服务（= GARDEN_DATA_DIR/uploads）
+    # 兼容接入 Asset v1 之前的历史图片；新上传文件由 Shadow Asset 提供公开地址。
     location /uploads/ {
         alias /var/lib/shadow-garden/uploads/;
         expires 30d;

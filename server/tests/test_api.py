@@ -291,6 +291,46 @@ def test_upload_validation_and_success(client, admin_headers):
     assert client.get(url).status_code == 200
 
 
+def test_upload_uses_platform_asset_and_records_mapping(
+    client, admin_headers, monkeypatch
+):
+    from app.assets import GardenAssetUpload
+    from app.db import connect
+    from app.routers import uploads
+
+    monkeypatch.setenv("GARDEN_ASSET_MODE", "platform")
+
+    def fake_upload(**kwargs):
+        assert kwargs["content"] == b"image-data"
+        return GardenAssetUpload(
+            asset_id="asset-1",
+            version_id="version-1",
+            reference_id="reference-1",
+            url="https://assets.example.test/public/version-1",
+        )
+
+    monkeypatch.setattr(uploads, "upload_public_image", fake_upload)
+    response = client.post(
+        "/api/uploads",
+        files={"file": ("photo.png", b"image-data", "image/png")},
+        headers=admin_headers,
+    )
+    assert response.status_code == 201, response.text
+    assert response.json() == {
+        "url": "https://assets.example.test/public/version-1",
+        "size": 10,
+        "asset_id": "asset-1",
+        "version_id": "version-1",
+    }
+    conn = connect()
+    try:
+        row = conn.execute("SELECT * FROM asset_files WHERE asset_id = ?", ("asset-1",)).fetchone()
+        assert row["version_id"] == "version-1"
+        assert row["reference_id"] == "reference-1"
+    finally:
+        conn.close()
+
+
 def test_summary_shape(client, admin_headers):
     client.post("/api/posts", json={"title": "p", "status": "published"}, headers=admin_headers)
     client.post("/api/projects", json={"name": "j"}, headers=admin_headers)
