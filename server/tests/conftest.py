@@ -18,6 +18,7 @@ TABLES = (
     "moments",
     "about",
     "asset_files",
+    "asset_uploads_pending",
     "sessions",
 )
 

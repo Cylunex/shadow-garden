@@ -28,6 +28,7 @@ def test_asset_upload_uses_v1_sdk_contract(tmp_path, monkeypatch):
             calls.append(("create", kwargs))
             return {
                 "upload_session_id": "upload-1",
+                "expires_at": "2026-08-20T00:00:00+00:00",
                 "target": {"method": "PUT", "url": "https://upload.example.test"},
             }
 

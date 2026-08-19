@@ -211,20 +211,99 @@
     fileInput.click();
   }
 
+  async function legacyUpload(file) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const resp = await fetch("/api/uploads", {
+      method: "POST",
+      credentials: "same-origin",
+      body: fd,
+    });
+    if (!resp.ok) throw new Error((await resp.json()).detail || "HTTP " + resp.status);
+    return resp.json();
+  }
+
+  async function probeUploadTarget(target) {
+    if (target.route === "canonical") return true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    try {
+      await fetch(target.url, {
+        method: "OPTIONS",
+        mode: "cors",
+        cache: "no-store",
+        credentials: "omit",
+        signal: controller.signal,
+      });
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function directUpload(file) {
+    const initialized = await fetch("/api/uploads/init", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name || "image",
+        content_type: file.type || "application/octet-stream",
+        size_bytes: file.size,
+      }),
+    });
+    if (initialized.status === 409) return legacyUpload(file);
+    if (!initialized.ok) {
+      throw new Error((await initialized.json()).detail || "HTTP " + initialized.status);
+    }
+    const session = await initialized.json();
+    let uploaded = false;
+    let lastError = null;
+    for (const target of session.targets || []) {
+      if (!(await probeUploadTarget(target))) continue;
+      try {
+        const sent = await fetch(target.url, {
+          method: target.method || "PUT",
+          mode: "cors",
+          credentials: "omit",
+          headers: target.headers || {},
+          body: file,
+        });
+        if (!sent.ok) {
+          const rejected = new Error("文件写入失败：HTTP " + sent.status);
+          rejected.uploadRejected = true;
+          throw rejected;
+        }
+        uploaded = true;
+        break;
+      } catch (error) {
+        lastError = error;
+        if (error && error.uploadRejected) throw error;
+        if (target.route !== "canonical") continue;
+      }
+    }
+    if (!uploaded) throw lastError || new Error("没有可用的上传线路");
+
+    const completed = await fetch("/api/uploads/complete", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ upload_id: session.upload_id }),
+    });
+    if (!completed.ok) {
+      throw new Error((await completed.json()).detail || "HTTP " + completed.status);
+    }
+    return completed.json();
+  }
+
   fileInput.addEventListener("change", async () => {
     const files = Array.from(fileInput.files || []);
     if (!files.length || !uploadHandler) return;
     try {
       for (const file of files) {
-        const fd = new FormData();
-        fd.append("file", file);
-        const resp = await fetch("/api/uploads", {
-          method: "POST",
-          credentials: "same-origin",
-          body: fd,
-        });
-        if (!resp.ok) throw new Error((await resp.json()).detail || "HTTP " + resp.status);
-        const { url } = await resp.json();
+        const { url } = await directUpload(file);
         uploadHandler(url);
       }
       toast(files.length > 1 ? files.length + " 张图片已上传" : "图片已上传");

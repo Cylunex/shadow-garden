@@ -331,6 +331,92 @@ def test_upload_uses_platform_asset_and_records_mapping(
         conn.close()
 
 
+def test_direct_upload_initializes_nas_first_and_completes_idempotently(
+    client, admin_headers, monkeypatch
+):
+    from app.assets import GardenAssetUpload, GardenAssetUploadSession
+    from app.db import connect
+    from app.routers import uploads
+
+    monkeypatch.setenv("GARDEN_ASSET_MODE", "platform")
+    calls = []
+
+    def fake_create(**kwargs):
+        calls.append(("create", kwargs))
+        return GardenAssetUploadSession(
+            record_id=kwargs["record_id"],
+            upload_session_id="session-direct-1",
+            expires_at="2026-08-20T00:00:00+00:00",
+            target={
+                "route": "canonical",
+                "method": "PUT",
+                "url": "https://assets.example.test/upload",
+                "headers": {"Authorization": "Upload canonical"},
+            },
+            alternate_targets=(
+                {
+                    "route": "alternate-1",
+                    "method": "PUT",
+                    "url": "http://nas.example.test:55080/platform/assets/upload",
+                    "headers": {"Authorization": "Upload local"},
+                },
+            ),
+        )
+
+    def fake_complete(**kwargs):
+        calls.append(("complete", kwargs))
+        return GardenAssetUpload(
+            asset_id="asset-direct-1",
+            version_id="version-direct-1",
+            reference_id="reference-direct-1",
+            url="https://assets.example.test/public/version-direct-1",
+        )
+
+    monkeypatch.setattr(uploads, "create_public_image_upload", fake_create)
+    monkeypatch.setattr(uploads, "complete_public_image_upload", fake_complete)
+    initialized = client.post(
+        "/api/uploads/init",
+        json={"filename": "direct.png", "content_type": "image/png", "size_bytes": 123},
+        headers=admin_headers,
+    )
+    assert initialized.status_code == 201, initialized.text
+    assert initialized.headers["cache-control"] == "no-store"
+    init_payload = initialized.json()
+    assert [item["route"] for item in init_payload["targets"]] == [
+        "alternate-1",
+        "canonical",
+    ]
+
+    completed = client.post(
+        "/api/uploads/complete",
+        json={"upload_id": init_payload["upload_id"]},
+        headers=admin_headers,
+    )
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["asset_id"] == "asset-direct-1"
+    replay = client.post(
+        "/api/uploads/complete",
+        json={"upload_id": init_payload["upload_id"]},
+        headers=admin_headers,
+    )
+    assert replay.status_code == 200
+    assert replay.json() == completed.json()
+    assert [name for name, _ in calls] == ["create", "complete"]
+
+    conn = connect()
+    try:
+        pending = conn.execute(
+            "SELECT * FROM asset_uploads_pending WHERE id = ?", (init_payload["upload_id"],)
+        ).fetchone()
+        mapped = conn.execute(
+            "SELECT * FROM asset_files WHERE asset_id = ?", ("asset-direct-1",)
+        ).fetchone()
+        assert pending["status"] == "completed"
+        assert pending["reference_id"] == mapped["reference_id"]
+    finally:
+        conn.close()
+
+
 def test_summary_shape(client, admin_headers):
     client.post("/api/posts", json={"title": "p", "status": "published"}, headers=admin_headers)
     client.post("/api/projects", json={"name": "j"}, headers=admin_headers)

@@ -67,7 +67,8 @@ cp .env.example .env            # 填 GARDEN_ADMIN_PASSWORD
 | `GET/POST/PUT/DELETE /api/trips`，`GET /api/trips/{id}` | 旅行（日期、相册、Markdown 游记） |
 | `GET/POST/PUT/PATCH/DELETE /api/moments` | 日常（记录/风景、Markdown、多图、合集） |
 | `GET/PUT /api/about` | 关于页（介绍 + 联系方式） |
-| `POST /api/uploads` | 上传图片到 Shadow Asset v1（jpg/png/gif/webp，默认 ≤8MB） |
+| `POST /api/uploads/init`、`POST /api/uploads/complete` | 两阶段直传 Shadow Asset，局域网入口优先、云端入口回退 |
+| `POST /api/uploads` | 兼容旧客户端：由 Garden 中转上传图片 |
 | `GET /api/summary` | 首页聚合 |
 | `GET /api/stats` | 花园数据（统计 + 热力图 + 标签榜） |
 | `POST /api/posts/{slug}/water` | 给文章浇水（匿名点赞，Redis 防刷） |

@@ -99,6 +99,21 @@ CREATE TABLE IF NOT EXISTS asset_files (
   content_type      TEXT NOT NULL,
   size_bytes        INTEGER NOT NULL,
   created_at        TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS asset_uploads_pending (
+  id                TEXT PRIMARY KEY,
+  upload_session_id TEXT NOT NULL UNIQUE,
+  original_filename TEXT NOT NULL,
+  content_type      TEXT NOT NULL,
+  size_bytes        INTEGER NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'pending',
+  expires_at        TEXT NOT NULL,
+  asset_id          TEXT UNIQUE,
+  version_id        TEXT,
+  reference_id      TEXT UNIQUE,
+  url               TEXT,
+  created_at        TEXT NOT NULL,
+  completed_at      TEXT
 )
 """
 
