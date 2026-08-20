@@ -5,30 +5,27 @@ from .rendering import render_markdown
 POSTS = [
     {
         "slug": "hello-world",
-        "title": "Hello World：这座花园是怎么搭起来的",
-        "summary": "从一台 ECS、一份 nginx 配置和一个 rsync 脚本开始，到现在的前后端小站。",
+        "title": "Hello World：欢迎来到这座花园",
+        "summary": "这里记录持续生长的文章、项目、旅途和日常片段。",
         "content_md": (
-            "这座花园的第一版只有一张静态 HTML。后来它长出了后端：\n\n"
-            "- **FastAPI + SQLite**：一个进程、一个数据库文件，数据自持\n"
-            "- **无构建前端**：纯 HTML/CSS/JS，改完即部署\n"
-            "- **rsync 一键部署**：`./scripts/deploy.sh`\n\n"
-            "## 为什么不上现成的博客系统\n\n"
-            "因为自己种的树，浇水才有意思。\n\n"
-            "```bash\n./scripts/deploy.sh\n```\n"
+            "这座花园用来保存仍在生长的内容：\n\n"
+            "- 写下正在形成的想法\n"
+            "- 整理项目和长期主题\n"
+            "- 留住旅行、美食与日常片段\n\n"
+            "内容不必一次完成，愿意持续回来浇水就好。\n"
         ),
-        "tags": ["建站", "碎碎念"],
+        "tags": ["花园", "碎碎念"],
     },
     {
-        "slug": "nginx-https-notes",
-        "title": "给 nginx 配 HTTPS 的几个小坑",
-        "summary": "证书续期、HTTP 跳转、反代头透传，一次记下来。",
+        "slug": "why-digital-garden",
+        "title": "为什么保留一座数字花园",
+        "summary": "比起一次性发布，更看重内容在时间里的生长和连接。",
         "content_md": (
-            "记录几个踩过的坑：\n\n"
-            "1. `certbot renew` 要配好 webroot，否则续期悄悄失败\n"
-            "2. 反代给后端时记得带上 `X-Forwarded-Proto`，不然生成的链接是 http\n"
-            "3. `client_max_body_size` 默认 1m，传图会 413\n"
+            "传统文章像完成后的展品，数字花园更像工作台。\n\n"
+            "旧笔记可以被修订，新项目可以和过去的想法重新建立连接。\n"
+            "重要的不是更新频率，而是让值得保留的内容始终可找、可读、可继续。\n"
         ),
-        "tags": ["nginx", "运维"],
+        "tags": ["写作", "数字花园"],
     },
 ]
 
@@ -37,7 +34,7 @@ PROJECTS = [
         "name": "Shadow Garden",
         "description": "持续生长的个人数字花园：集中展示项目、博客、日常风景、美食与旅行记录，自部署、数据自持。",
         "tags": ["FastAPI", "PostgreSQL", "Redis"],
-        "link": "https://cylunex.top/",
+        "link": "",
         "repo": "https://github.com/Cylunex/shadow-garden",
         "status": "active",
         "sort_order": 100,
@@ -55,7 +52,7 @@ PROJECTS = [
         "name": "Shadow Health",
         "description": "个人健康数据中枢：统一记录饮食、训练、睡眠、体测与多设备数据，支持离线使用、AI 分析和多 Agent 接入。",
         "tags": ["FastAPI", "PostgreSQL", "PWA", "MCP"],
-        "link": "https://health.cylunex.top/",
+        "link": "",
         "repo": "https://github.com/Cylunex/shadow-health",
         "status": "active",
         "sort_order": 80,
@@ -64,7 +61,7 @@ PROJECTS = [
         "name": "Shadow Travel",
         "description": "以地图为中心的主题地点收藏工具，可规划旅行与美食地图、记录到访和照片，并和同行人协作维护。",
         "tags": ["FastAPI", "PostgreSQL", "地图", "协作"],
-        "link": "https://travel.cylunex.top/",
+        "link": "",
         "repo": "https://github.com/Cylunex/shadow-travel",
         "status": "active",
         "sort_order": 70,
@@ -73,7 +70,7 @@ PROJECTS = [
         "name": "Shadow Ledger",
         "description": "以消费为中心的个人收支记录与规划系统，保留金额事实、消费记忆和未来计划，并提供完整审计链路。",
         "tags": ["FastAPI", "PostgreSQL", "OIDC", "财务"],
-        "link": "https://ledger.cylunex.top/",
+        "link": "",
         "repo": "https://github.com/Cylunex/shadow-ledger",
         "status": "active",
         "sort_order": 60,
@@ -91,7 +88,7 @@ PROJECTS = [
         "name": "Shadow Foliant",
         "description": "面向 A 股个人投研的 Agent-first 系统，把行情、选股、持仓、风险、回测与真实结果反馈串成闭环。",
         "tags": ["Python", "FastAPI", "MCP", "量化投研"],
-        "link": "https://stock.cylunex.top/",
+        "link": "",
         "repo": "https://github.com/Cylunex/shadow-foliant",
         "status": "active",
         "sort_order": 40,
@@ -167,7 +164,7 @@ MOMENTS = [
 
 ABOUT_MD = (
     "**Cylunex**，业余开发者。喜欢自己动手把想法做成能用的东西：健康数据、自动化、自部署服务。"
-    "这座花园跑在一台阿里云 ECS 上，由 nginx 浇水。"
+    "这座花园用于整理项目、文章和生活片段。"
 )
 
 

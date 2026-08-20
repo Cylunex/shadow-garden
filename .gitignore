@@ -9,3 +9,14 @@ server/data/
 server/.env
 __pycache__/
 .pytest_cache/
+
+# Real deployment and operations material is maintained outside the repository.
+/deploy/
+/ops/
+/operations/
+*.pem
+*.key
+*.p12
+*.pfx
+*.token
+*.secret

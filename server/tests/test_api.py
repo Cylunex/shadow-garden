@@ -357,7 +357,7 @@ def test_direct_upload_initializes_nas_first_and_completes_idempotently(
                 {
                     "route": "alternate-1",
                     "method": "PUT",
-                    "url": "http://nas.example.test:55080/platform/assets/upload",
+                    "url": "http://nas.example.test:18080/platform/assets/upload",
                     "headers": {"Authorization": "Upload local"},
                 },
             ),
