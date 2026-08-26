@@ -1,0 +1,120 @@
+version: 2
+app_id: garden
+package_version: 0.1.0
+skills:
+  - id: shadow-garden-content
+    path: skills/shadow-garden-content/SKILL.md
+    summary: 读取数字花园摘要并创建等待用户审核的文章草稿
+    capabilities:
+      - garden.summary.read
+      - garden.posts.draft
+    invocation:
+      model: true
+      user: true
+capabilities:
+  - id: garden.summary.read
+    summary: 读取数字花园的公开内容与草稿数量摘要
+    audience: garden
+    scopes: [garden.summary.read]
+    tools:
+      - name: garden.summary.get
+        transport: http
+        contract_ref: contracts/agent.openapi.yaml
+        operation_id: get_garden_agent_summary
+        exposure: on-demand
+        result_mode: summary
+        max_result_bytes: 8192
+        max_model_chars: 2000
+        timeout_ms: 10000
+        concurrency_safe: true
+        retry_policy: idempotent
+    effect: read
+    data_classification: internal
+    risk_level: L0
+    confirmation: none
+    reversible: true
+    resource_grant_required: false
+    idempotency_required: false
+  - id: garden.posts.draft
+    summary: 创建一篇不会直接公开的文章草稿
+    audience: garden
+    scopes: [garden.posts.draft]
+    tools:
+      - name: garden.posts.draft
+        transport: http
+        contract_ref: contracts/agent.openapi.yaml
+        operation_id: create_nexus_garden_review
+        exposure: on-demand
+        result_mode: reference
+        max_result_bytes: 16384
+        max_model_chars: 2400
+        timeout_ms: 15000
+        concurrency_safe: false
+        retry_policy: idempotent
+    effect: draft
+    data_classification: personal
+    risk_level: L1
+    confirmation: notify
+    reversible: true
+    resource_grant_required: false
+    idempotency_required: true
+  - id: garden.posts.review
+    summary: 由 Nexus Host 列出或退回同一 Agent 创建的文章草稿
+    audience: garden
+    scopes: [garden.posts.review]
+    tools:
+      - name: garden.posts.review.list
+        transport: http
+        contract_ref: contracts/agent.openapi.yaml
+        operation_id: list_nexus_garden_reviews
+        exposure: hidden
+        result_mode: reference
+        max_result_bytes: 262144
+        max_model_chars: 1200
+        timeout_ms: 15000
+        concurrency_safe: true
+        retry_policy: idempotent
+      - name: garden.posts.review.reject
+        transport: http
+        contract_ref: contracts/agent.openapi.yaml
+        operation_id: reject_nexus_garden_review
+        exposure: hidden
+        result_mode: reference
+        max_result_bytes: 16384
+        max_model_chars: 1200
+        timeout_ms: 15000
+        concurrency_safe: false
+        retry_policy: idempotent
+    effect: write
+    data_classification: personal
+    risk_level: L2
+    confirmation: policy
+    reversible: true
+    resource_grant_required: false
+    idempotency_required: true
+  - id: garden.posts.publish
+    summary: 将一篇已审核文章公开发布到数字花园
+    audience: garden
+    scopes: [garden.posts.publish]
+    tools:
+      - name: garden.posts.publish
+        transport: http
+        contract_ref: contracts/agent.openapi.yaml
+        operation_id: commit_nexus_garden_review
+        exposure: hidden
+        result_mode: reference
+        max_result_bytes: 16384
+        max_model_chars: 1200
+        timeout_ms: 15000
+        concurrency_safe: false
+        retry_policy: idempotent
+    effect: publish
+    data_classification: personal
+    risk_level: L3
+    confirmation: explicit
+    reversible: false
+    resource_grant_required: false
+    idempotency_required: true
+    confirmation_resource:
+      template: shadow://garden/reviews/{review_id}
+      arguments: [review_id]

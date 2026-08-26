@@ -54,6 +54,33 @@ class Settings:
         return os.environ.get("GARDEN_AGENT_TOKEN", "")
 
     @property
+    def agent_registry_path(self) -> str:
+        return os.environ.get("GARDEN_AGENT_REGISTRY_PATH", "")
+
+    @property
+    def agent_secrets_dir(self) -> str:
+        return os.environ.get("GARDEN_AGENT_SECRETS_DIR", "")
+
+    @property
+    def confirmation_public_key_file(self) -> str:
+        return os.environ.get("GARDEN_CONFIRMATION_PUBLIC_KEY_FILE", "")
+
+    @property
+    def confirmation_key_id(self) -> str:
+        return os.environ.get("GARDEN_CONFIRMATION_KEY_ID", "")
+
+    @property
+    def confirmation_issuer(self) -> str:
+        return os.environ.get("GARDEN_CONFIRMATION_ISSUER", "")
+
+    @property
+    def confirmation_replay_db(self) -> str:
+        return os.environ.get(
+            "GARDEN_CONFIRMATION_REPLAY_DB",
+            str(self.data_dir / "confirmation-replay.db"),
+        )
+
+    @property
     def canonical_url(self) -> str:
         return os.environ.get("GARDEN_CANONICAL_URL", "").rstrip("/")
 

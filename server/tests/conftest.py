@@ -19,6 +19,7 @@ TABLES = (
     "about",
     "asset_files",
     "asset_uploads_pending",
+    "garden_agent_reviews",
     "sessions",
 )
 
@@ -39,6 +40,33 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("GARDEN_OIDC_REQUIRED_GROUP", "garden-admins")
     monkeypatch.setenv("GARDEN_OIDC_SESSION_DB", str(tmp_path / "web_auth.db"))
     monkeypatch.setenv("GARDEN_OIDC_ALLOW_HTTP_FOR_TESTS", "1")
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    private_key_file = tmp_path / "confirmation-private.pem"
+    public_key_file = tmp_path / "confirmation-public.pem"
+    private_key_file.write_bytes(
+        private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+    )
+    public_key_file.write_bytes(
+        private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    monkeypatch.setenv("GARDEN_CONFIRMATION_PUBLIC_KEY_FILE", str(public_key_file))
+    monkeypatch.setenv("GARDEN_CONFIRMATION_KEY_ID", "test-confirmation-key")
+    monkeypatch.setenv("GARDEN_CONFIRMATION_ISSUER", "shadow-platform-test")
+    monkeypatch.setenv(
+        "GARDEN_CONFIRMATION_REPLAY_DB", str(tmp_path / "confirmation-replay.db")
+    )
+    monkeypatch.setenv("GARDEN_TEST_CONFIRMATION_PRIVATE_KEY", str(private_key_file))
 
     pg_url = os.environ.get("PG_TEST_URL", "")
     if pg_url:

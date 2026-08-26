@@ -34,8 +34,10 @@ def test_content_agent_scope(client, agent_headers):
         },
         headers=agent_headers,
     )
-    assert updated.status_code == 200
-    assert updated.json()["status"] == "published"
+    assert updated.status_code == 403
+    assert client.get(f"/api/posts/{post['slug']}", headers=agent_headers).json()[
+        "status"
+    ] == "draft"
 
     assert client.delete(
         f"/api/posts/{post['id']}", headers=agent_headers
@@ -46,6 +48,98 @@ def test_content_agent_scope(client, agent_headers):
     assert client.put(
         "/api/about", json={"content_md": "越权"}, headers=agent_headers
     ).status_code == 401
+
+
+def test_garden_nexus_review_requires_signed_publish_confirmation(client, agent_headers):
+    import os
+
+    from shadow_sdk.confirmation import (
+        ConfirmationBinding,
+        ConfirmationSigner,
+        encode_confirmation_receipt,
+    )
+
+    created = client.post(
+        "/api/machine/v1/agent/nexus/reviews",
+        headers={**agent_headers, "Idempotency-Key": "garden-create-0001"},
+        json={
+            "intent": "garden.post",
+            "summary": "不会由 Agent 直接发布",
+            "fields": {
+                "title": "一篇等待确认的文章",
+                "contentMd": "正文",
+                "tags": ["Shadow"],
+            },
+        },
+    )
+    assert created.status_code == 201
+    review = created.json()
+    review_id = review["review_id"]
+    assert review["state"] == "pending"
+    assert review["protocol"] == "shadow.review.v1"
+
+    replayed = client.post(
+        "/api/machine/v1/agent/nexus/reviews",
+        headers={**agent_headers, "Idempotency-Key": "garden-create-0001"},
+        json={
+            "intent": "garden.post",
+            "summary": "不会由 Agent 直接发布",
+            "fields": {
+                "title": "一篇等待确认的文章",
+                "contentMd": "正文",
+                "tags": ["Shadow"],
+            },
+        },
+    )
+    assert replayed.status_code == 201
+    assert replayed.json()["review_id"] == review_id
+    assert replayed.json()["replayed"] is True
+
+    mismatch = client.post(
+        "/api/machine/v1/agent/nexus/reviews",
+        headers={**agent_headers, "Idempotency-Key": "garden-create-0001"},
+        json={
+            "intent": "garden.post",
+            "summary": "不同内容",
+            "fields": {"title": "不同内容"},
+        },
+    )
+    assert mismatch.status_code == 409
+
+    assert client.post(
+        f"/api/machine/v1/agent/nexus/reviews/{review_id}/commit",
+        headers={**agent_headers, "Idempotency-Key": "garden-publish-0001"},
+    ).status_code == 422
+
+    signer = ConfirmationSigner.from_pem_file(
+        os.environ["GARDEN_TEST_CONFIRMATION_PRIVATE_KEY"],
+        issuer="shadow-platform-test",
+        key_id="test-confirmation-key",
+    )
+    receipt = signer.issue(
+        ConfirmationBinding(
+            audience="garden",
+            plugin_id="shadow-garden",
+            capability_id="garden.posts.publish",
+            tool_name="garden.posts.publish",
+            effect="publish",
+            arguments={"review_id": review_id},
+            resource_uri=f"shadow://garden/reviews/{review_id}",
+        ),
+        actor="test-user",
+    )
+    published = client.post(
+        f"/api/machine/v1/agent/nexus/reviews/{review_id}/commit",
+        headers={
+            **agent_headers,
+            "Idempotency-Key": "garden-publish-0001",
+            "X-Shadow-Confirmation": encode_confirmation_receipt(receipt),
+        },
+    )
+    assert published.status_code == 200
+    assert published.json()["state"] == "committed"
+    assert published.json()["receipt"].startswith("shadow://garden/posts/")
+    assert client.get(f"/api/posts/{review['fields']['slug']}").status_code == 200
 
 
 def test_content_agent_context_and_partial_updates(client, agent_headers):

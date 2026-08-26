@@ -1,0 +1,35 @@
+version: 1
+presentation:
+  short_id: garden
+  title: Garden
+  caption: 数字花园、文章与公开表达
+  icon: garden
+  color: "#22C55E"
+  order: 50
+surfaces:
+  - id: today
+    type: summary
+    capability: garden.summary.read
+    operation_id: get_garden_agent_summary
+    display:
+      detail_pointer: /summary
+  - id: capture
+    type: capture
+    capability: garden.posts.draft
+    operation_id: create_nexus_garden_review
+    risk_level: L1
+    intent_prefixes: [garden.post]
+  - id: review
+    type: review
+    capability: garden.posts.publish
+    risk_level: L3
+    intent_prefixes: [garden.post]
+  - id: app
+    type: app-link
+review:
+  protocol: shadow.review.v1
+  mode: commit
+  list_operation_id: list_nexus_garden_reviews
+  create_operation_id: create_nexus_garden_review
+  commit_operation_id: commit_nexus_garden_review
+  reject_operation_id: reject_nexus_garden_review

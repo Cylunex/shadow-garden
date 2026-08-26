@@ -1,0 +1,133 @@
+openapi: 3.1.0
+info:
+  title: Shadow Garden Agent API
+  version: 0.1.0
+servers:
+  - url: https://example.com
+paths:
+  /api/machine/v1/agent/summary:
+    get:
+      operationId: get_garden_agent_summary
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Garden summary
+          content:
+            application/json:
+              schema: { type: object }
+  /api/machine/v1/agent/nexus/reviews:
+    get:
+      operationId: list_nexus_garden_reviews
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Pending Garden reviews
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewList" }
+    post:
+      operationId: create_nexus_garden_review
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewCreate" }
+      responses:
+        "201":
+          description: Garden draft review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Review" }
+  /api/machine/v1/agent/nexus/reviews/{review_id}/commit:
+    post:
+      operationId: commit_nexus_garden_review
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ReviewId"
+      responses:
+        "200":
+          description: Published Garden post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Review" }
+  /api/machine/v1/agent/nexus/reviews/{review_id}/reject:
+    post:
+      operationId: reject_nexus_garden_review
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ReviewId"
+      responses:
+        "200":
+          description: Rejected Garden draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Review" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    ReviewId:
+      name: review_id
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+  schemas:
+    ReviewCreate:
+      type: object
+      additionalProperties: false
+      additionalProperties: false
+      required: [intent, summary, fields]
+      properties:
+        intent: { type: string, minLength: 1 }
+        summary: { type: string, minLength: 1 }
+        fields: { type: object, additionalProperties: true }
+        source_text: { type: string }
+        source_refs: { type: array, items: { type: string } }
+    Review:
+      type: object
+      additionalProperties: false
+      required:
+        - protocol
+        - review_id
+        - reference
+        - revision
+        - domain
+        - intent
+        - summary
+        - fields
+        - risk_level
+        - state
+        - created_at
+        - source_refs
+        - trace_id
+        - receipt
+        - replayed
+      properties:
+        protocol: { const: shadow.review.v1 }
+        review_id: { type: string }
+        reference: { type: string, pattern: "^shadow://" }
+        revision: { type: integer, minimum: 1 }
+        domain: { const: garden }
+        intent: { type: string }
+        summary: { type: string }
+        fields: { type: object, additionalProperties: true }
+        risk_level: { const: L3 }
+        state: { enum: [pending, committed, rejected] }
+        created_at: { type: string }
+        source_refs: { type: array, items: { type: string } }
+        trace_id: { type: string }
+        receipt: { type: [string, "null"] }
+        replayed: { type: boolean }
+    ReviewList:
+      type: object
+      required: [protocol, items, truncated, trace_id]
+      properties:
+        protocol: { const: shadow.review.v1 }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Review" }
+        truncated: { type: boolean }
+        trace_id: { type: string }

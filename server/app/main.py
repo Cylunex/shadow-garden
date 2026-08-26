@@ -23,7 +23,7 @@ from .auth import get_redis, require_admin, require_content_editor
 from .config import SITE_DIR, settings
 from .db import connect, get_db, init_db, tags_from_json
 from .rendering import render_markdown, word_count
-from .routers import about, auth, food, moments, posts, projects, travel, uploads
+from .routers import about, auth, food, machine, moments, posts, projects, travel, uploads
 
 SITE_TITLE = "Shadow Garden"
 SITE_DESC = "Cylunex 的数字花园：博客、项目、美食与旅行"
@@ -39,7 +39,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Shadow Garden API", lifespan=lifespan)
 
-for router in (auth.router, posts.router, projects.router, food.router,
+for router in (auth.router, machine.router, posts.router, projects.router, food.router,
                travel.router, moments.router, about.router, uploads.router):
     app.include_router(router)
 

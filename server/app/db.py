@@ -114,6 +114,16 @@ CREATE TABLE IF NOT EXISTS asset_uploads_pending (
   url               TEXT,
   created_at        TEXT NOT NULL,
   completed_at      TEXT
+);
+CREATE TABLE IF NOT EXISTS garden_agent_reviews (
+  id         TEXT PRIMARY KEY,
+  post_id    BIGINT NOT NULL UNIQUE,
+  agent_id   TEXT NOT NULL,
+  intent     TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 )
 """
 
@@ -181,6 +191,7 @@ _MIGRATIONS = [
     ("moments", "kind", "TEXT NOT NULL DEFAULT 'note'"),
     ("moments", "photos", "TEXT NOT NULL DEFAULT '[]'"),
     ("moments", "collections", "TEXT NOT NULL DEFAULT '[]'"),
+    ("garden_agent_reviews", "request_hash", "TEXT NOT NULL DEFAULT ''"),
 ]
 
 

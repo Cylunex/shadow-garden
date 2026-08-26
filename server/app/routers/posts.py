@@ -12,6 +12,7 @@ from ..auth import (
     require_admin,
     require_content_editor,
 )
+from ..oidc import BrowserIdentity
 from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 from ..rendering import reading_minutes, render_markdown, slugify, word_count
 
@@ -154,8 +155,25 @@ def water_post(
     return {"waters": fresh["waters"], "watered": True}
 
 
-@router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
-def create_post(body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
+def _require_agent_draft(
+    identity: Optional[BrowserIdentity],
+    *,
+    requested_status: str,
+    current_status: Optional[str] = None,
+) -> None:
+    if identity is not None:
+        return
+    if requested_status == "published" or current_status == "published":
+        raise HTTPException(403, "Agent 只能创建和修改未发布草稿")
+
+
+@router.post("", status_code=201)
+def create_post(
+    body: PostIn,
+    identity: Optional[BrowserIdentity] = Depends(require_content_editor),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    _require_agent_draft(identity, requested_status=body.status)
     now = now_iso()
     slug = _unique_slug(conn, body.slug.strip() or slugify(body.title), None)
     published_at = now if body.status == "published" else None
@@ -198,13 +216,31 @@ def _update_post(post_id: int, body: PostIn, conn: sqlite3.Connection) -> dict:
     return _serialize(row, with_content=True)
 
 
-@router.put("/{post_id}", dependencies=[Depends(require_content_editor)])
-def update_post(post_id: int, body: PostIn, conn: sqlite3.Connection = Depends(get_db)):
+@router.put("/{post_id}")
+def update_post(
+    post_id: int,
+    body: PostIn,
+    identity: Optional[BrowserIdentity] = Depends(require_content_editor),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    row = conn.execute("SELECT status FROM posts WHERE id = ?", (post_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "文章不存在")
+    _require_agent_draft(
+        identity,
+        requested_status=body.status,
+        current_status=row["status"],
+    )
     return _update_post(post_id, body, conn)
 
 
-@router.patch("/{post_id}", dependencies=[Depends(require_content_editor)])
-def patch_post(post_id: int, body: PostPatch, conn: sqlite3.Connection = Depends(get_db)):
+@router.patch("/{post_id}")
+def patch_post(
+    post_id: int,
+    body: PostPatch,
+    identity: Optional[BrowserIdentity] = Depends(require_content_editor),
+    conn: sqlite3.Connection = Depends(get_db),
+):
     row = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "文章不存在")
@@ -217,6 +253,11 @@ def patch_post(post_id: int, body: PostPatch, conn: sqlite3.Connection = Depends
         "status": row["status"],
     }
     current.update(body.model_dump(exclude_unset=True))
+    _require_agent_draft(
+        identity,
+        requested_status=current["status"],
+        current_status=row["status"],
+    )
     return _update_post(post_id, PostIn(**current), conn)
 
 
