@@ -25,8 +25,14 @@ Shadow Garden 是 Shadow 系列的个人内容创作与数字花园。它把写�
 cd server
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+.venv/bin/python -m app.migrations upgrade
 .venv/bin/uvicorn app.main:app --reload
 ```
+
+升级环境必须先显式执行版本化迁移；应用启动只校验迁移头，不会临时修改表结构。文章发布按
+草稿、预览、修订、发布与撤回留存版本/事件，管理端导出的 ZIP 包含 Markdown、资源清单与
+哈希，可通过 `/api/export/verify` 在隔离临时目录验证恢复。Travel 与 Archive 只以稳定
+`shadow://` 引用进入导出，不在 Garden 复制上游事实。
 
 ## 文档
 

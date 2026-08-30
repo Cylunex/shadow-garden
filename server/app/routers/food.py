@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from ..auth import require_admin, require_content_editor
+from ..auth import content_owner_id, require_admin, require_content_editor
 from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 
 router = APIRouter(prefix="/api/food", tags=["food"])
@@ -59,65 +59,65 @@ def _serialize(row: sqlite3.Row) -> dict:
 
 
 @router.get("")
-def list_food(conn: sqlite3.Connection = Depends(get_db)):
+def list_food(owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
     rows = conn.execute(
-        "SELECT * FROM food ORDER BY CASE WHEN eaten_on = '' THEN created_at ELSE eaten_on END DESC"
+        "SELECT * FROM food WHERE owner_id=? ORDER BY CASE WHEN eaten_on = '' THEN created_at ELSE eaten_on END DESC", (owner_id,)
     ).fetchall()
     return {"items": [_serialize(r) for r in rows]}
 
 
 @router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
-def create_food(body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
+def create_food(body: FoodIn, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
-        """INSERT INTO food (title, emoji, rating, location, review, photo, photos,
+        """INSERT INTO food (owner_id, title, emoji, rating, location, review, photo, photos,
                              tags, eaten_on, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
-            body.title, body.emoji, body.rating, body.location, body.review,
+            owner_id, body.title, body.emoji, body.rating, body.location, body.review,
             body.photo, json.dumps(body.photos, ensure_ascii=False),
             tags_to_json(body.tags), body.eaten_on, now, now,
         ),
     )
-    row = conn.execute("SELECT * FROM food WHERE id = ?", (inserted_id(cur),)).fetchone()
+    row = conn.execute("SELECT * FROM food WHERE id=? AND owner_id=?", (inserted_id(cur), owner_id)).fetchone()
     return _serialize(row)
 
 
-def _update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection) -> dict:
+def _update_food(food_id: int, body: FoodIn, owner_id: str, conn: sqlite3.Connection) -> dict:
     cur = conn.execute(
         """UPDATE food SET title=?, emoji=?, rating=?, location=?, review=?,
                            photo=?, photos=?, tags=?, eaten_on=?, updated_at=?
-           WHERE id=?""",
+           WHERE id=? AND owner_id=?""",
         (
             body.title, body.emoji, body.rating, body.location, body.review,
             body.photo, json.dumps(body.photos, ensure_ascii=False),
-            tags_to_json(body.tags), body.eaten_on, now_iso(), food_id,
+            tags_to_json(body.tags), body.eaten_on, now_iso(), food_id, owner_id,
         ),
     )
     if cur.rowcount == 0:
         raise HTTPException(404, "记录不存在")
-    row = conn.execute("SELECT * FROM food WHERE id = ?", (food_id,)).fetchone()
+    row = conn.execute("SELECT * FROM food WHERE id=? AND owner_id=?", (food_id, owner_id)).fetchone()
     return _serialize(row)
 
 
 @router.put("/{food_id}", dependencies=[Depends(require_content_editor)])
-def update_food(food_id: int, body: FoodIn, conn: sqlite3.Connection = Depends(get_db)):
-    return _update_food(food_id, body, conn)
+def update_food(food_id: int, body: FoodIn, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
+    return _update_food(food_id, body, owner_id, conn)
 
 
 @router.patch("/{food_id}", dependencies=[Depends(require_content_editor)])
-def patch_food(food_id: int, body: FoodPatch, conn: sqlite3.Connection = Depends(get_db)):
-    row = conn.execute("SELECT * FROM food WHERE id = ?", (food_id,)).fetchone()
+def patch_food(food_id: int, body: FoodPatch, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
+    row = conn.execute("SELECT * FROM food WHERE id=? AND owner_id=?", (food_id, owner_id)).fetchone()
     if row is None:
         raise HTTPException(404, "记录不存在")
     current = _serialize(row)
     current.update(body.model_dump(exclude_unset=True))
-    return _update_food(food_id, FoodIn(**current), conn)
+    return _update_food(food_id, FoodIn(**current), owner_id, conn)
 
 
 @router.delete("/{food_id}", dependencies=[Depends(require_admin)])
-def delete_food(food_id: int, conn: sqlite3.Connection = Depends(get_db)):
-    cur = conn.execute("DELETE FROM food WHERE id = ?", (food_id,))
+def delete_food(food_id: int, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.execute("DELETE FROM food WHERE id=? AND owner_id=?", (food_id, owner_id))
     if cur.rowcount == 0:
         raise HTTPException(404, "记录不存在")
     return {"ok": True}

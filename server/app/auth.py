@@ -40,6 +40,14 @@ def require_admin(request: Request) -> BrowserIdentity:
     if identity is None:
         raise HTTPException(401, "需要 Shadow Identity 管理员登录")
     _require_same_origin(request)
+    request.state.garden_actor_id = f"user:{identity.shadow_user_id}"
+    return identity
+
+
+def require_publisher(request: Request) -> BrowserIdentity:
+    identity = require_admin(request)
+    if not identity.in_group(settings.publisher_group):
+        raise HTTPException(403, "需要 Garden 发布权限")
     return identity
 
 
@@ -50,9 +58,11 @@ def require_content_editor(
     identity = browser_identity(request)
     if identity is not None:
         _require_same_origin(request)
+        request.state.garden_actor_id = f"user:{identity.shadow_user_id}"
         return identity
     if not _agent_token_valid(_extract_token(authorization)):
         raise HTTPException(401, "需要内容编辑权限")
+    request.state.garden_actor_id = "agent:garden-content-agent"
     return None
 
 
@@ -67,6 +77,15 @@ def optional_content_editor(
     return browser_identity(request) is not None or _agent_token_valid(
         _extract_token(authorization)
     )
+
+
+def content_owner_id() -> str:
+    """Return the configured tenant owner; never accept a caller-supplied owner."""
+    return settings.content_owner_id
+
+
+def actor_id(request: Request) -> str:
+    return getattr(request.state, "garden_actor_id", "system:garden")
 
 
 def _require_same_origin(request: Request) -> None:

@@ -54,6 +54,25 @@ class Settings:
         return os.environ.get("GARDEN_AGENT_TOKEN", "")
 
     @property
+    def content_owner_id(self) -> str:
+        """Single deployment owner; callers can never override this with a header."""
+        return os.environ.get("GARDEN_CONTENT_OWNER_ID", "local-owner").strip() or "local-owner"
+
+    @property
+    def publisher_group(self) -> str:
+        return os.environ.get("GARDEN_OIDC_PUBLISHER_GROUP", self.oidc_required_group)
+
+    @property
+    def external_link_checks(self) -> bool:
+        return os.environ.get("GARDEN_EXTERNAL_LINK_CHECKS", "false").lower() in {
+            "1", "true", "yes",
+        }
+
+    @property
+    def archive_base_url(self) -> str:
+        return os.environ.get("GARDEN_ARCHIVE_BASE_URL", "").rstrip("/")
+
+    @property
     def agent_registry_path(self) -> str:
         return os.environ.get("GARDEN_AGENT_REGISTRY_PATH", "")
 

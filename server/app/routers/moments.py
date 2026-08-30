@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing_extensions import Literal
 
-from ..auth import require_admin, require_content_editor
+from ..auth import content_owner_id, require_admin, require_content_editor
 from ..db import get_db, inserted_id, now_iso
 from ..rendering import render_markdown
 
@@ -59,67 +59,73 @@ def _serialize(row: sqlite3.Row) -> dict:
 @router.get("")
 def list_moments(
     limit: int = Query(default=50, ge=1, le=200),
+    owner_id: str = Depends(content_owner_id),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     rows = conn.execute(
-        "SELECT * FROM moments ORDER BY created_at DESC, id DESC LIMIT ?", (limit,)
+        "SELECT * FROM moments WHERE owner_id=? ORDER BY created_at DESC,id DESC LIMIT ?", (owner_id, limit)
     ).fetchall()
     return {"items": [_serialize(r) for r in rows]}
 
 
 @router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
-def create_moment(body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
+def create_moment(body: MomentIn, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
     _validate(body)
     now = now_iso()
     cur = conn.execute(
-        """INSERT INTO moments (title, kind, content_md, content_html, photos,
+        """INSERT INTO moments (owner_id, title, kind, content_md, content_html, photos,
                                 collections, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
-            body.title, body.kind, body.content_md, render_markdown(body.content_md),
+            owner_id, body.title, body.kind, body.content_md, render_markdown(body.content_md),
             json.dumps(body.photos, ensure_ascii=False),
             json.dumps(body.collections, ensure_ascii=False), now, now,
         ),
     )
-    row = conn.execute("SELECT * FROM moments WHERE id = ?", (inserted_id(cur),)).fetchone()
+    row = conn.execute("SELECT * FROM moments WHERE id=? AND owner_id=?", (inserted_id(cur), owner_id)).fetchone()
     return _serialize(row)
 
 
-@router.put("/{moment_id}", dependencies=[Depends(require_content_editor)])
-def update_moment(moment_id: int, body: MomentIn, conn: sqlite3.Connection = Depends(get_db)):
+def _update_moment(moment_id: int, body: MomentIn, owner_id: str, conn) -> dict:
     _validate(body)
     cur = conn.execute(
         """UPDATE moments SET title=?, kind=?, content_md=?, content_html=?,
-                              photos=?, collections=?, updated_at=? WHERE id=?""",
+                              photos=?, collections=?, updated_at=? WHERE id=? AND owner_id=?""",
         (
             body.title, body.kind, body.content_md, render_markdown(body.content_md),
             json.dumps(body.photos, ensure_ascii=False),
-            json.dumps(body.collections, ensure_ascii=False), now_iso(), moment_id,
+            json.dumps(body.collections, ensure_ascii=False), now_iso(), moment_id, owner_id,
         ),
     )
     if cur.rowcount == 0:
         raise HTTPException(404, "日常记录不存在")
-    row = conn.execute("SELECT * FROM moments WHERE id = ?", (moment_id,)).fetchone()
+    row = conn.execute("SELECT * FROM moments WHERE id=? AND owner_id=?", (moment_id, owner_id)).fetchone()
     return _serialize(row)
+
+
+@router.put("/{moment_id}", dependencies=[Depends(require_content_editor)])
+def update_moment(moment_id: int, body: MomentIn, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
+    return _update_moment(moment_id, body, owner_id, conn)
 
 
 @router.patch("/{moment_id}", dependencies=[Depends(require_content_editor)])
 def patch_moment(
     moment_id: int,
     body: MomentPatch,
+    owner_id: str = Depends(content_owner_id),
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    row = conn.execute("SELECT * FROM moments WHERE id = ?", (moment_id,)).fetchone()
+    row = conn.execute("SELECT * FROM moments WHERE id=? AND owner_id=?", (moment_id, owner_id)).fetchone()
     if row is None:
         raise HTTPException(404, "日常记录不存在")
     current = _serialize(row)
     current.update(body.model_dump(exclude_unset=True))
-    return update_moment(moment_id, MomentIn(**current), conn)
+    return _update_moment(moment_id, MomentIn(**current), owner_id, conn)
 
 
 @router.delete("/{moment_id}", dependencies=[Depends(require_admin)])
-def delete_moment(moment_id: int, conn: sqlite3.Connection = Depends(get_db)):
-    cur = conn.execute("DELETE FROM moments WHERE id = ?", (moment_id,))
+def delete_moment(moment_id: int, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.execute("DELETE FROM moments WHERE id=? AND owner_id=?", (moment_id, owner_id))
     if cur.rowcount == 0:
         raise HTTPException(404, "日常记录不存在")
     return {"ok": True}

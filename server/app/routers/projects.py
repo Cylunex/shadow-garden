@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing_extensions import Literal
 
-from ..auth import require_admin
+from ..auth import content_owner_id, require_admin
 from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -40,51 +40,51 @@ def _serialize(row: sqlite3.Row) -> dict:
 
 
 @router.get("")
-def list_projects(conn: sqlite3.Connection = Depends(get_db)):
+def list_projects(owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
     rows = conn.execute(
-        "SELECT * FROM projects ORDER BY sort_order DESC, created_at DESC"
+        "SELECT * FROM projects WHERE owner_id=? ORDER BY sort_order DESC, created_at DESC", (owner_id,)
     ).fetchall()
     return {"items": [_serialize(r) for r in rows]}
 
 
 @router.post("", dependencies=[Depends(require_admin)], status_code=201)
-def create_project(body: ProjectIn, conn: sqlite3.Connection = Depends(get_db)):
+def create_project(body: ProjectIn, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
     now = now_iso()
     cur = conn.execute(
-        """INSERT INTO projects (name, description, tags, link, repo, status,
+        """INSERT INTO projects (owner_id, name, description, tags, link, repo, status,
                                  sort_order, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
-            body.name, body.description, tags_to_json(body.tags), body.link,
+            owner_id, body.name, body.description, tags_to_json(body.tags), body.link,
             body.repo, body.status, body.sort_order, now, now,
         ),
     )
-    row = conn.execute("SELECT * FROM projects WHERE id = ?", (inserted_id(cur),)).fetchone()
+    row = conn.execute("SELECT * FROM projects WHERE id=? AND owner_id=?", (inserted_id(cur), owner_id)).fetchone()
     return _serialize(row)
 
 
 @router.put("/{project_id}", dependencies=[Depends(require_admin)])
 def update_project(
-    project_id: int, body: ProjectIn, conn: sqlite3.Connection = Depends(get_db)
+    project_id: int, body: ProjectIn, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)
 ):
     cur = conn.execute(
         """UPDATE projects SET name=?, description=?, tags=?, link=?, repo=?,
                                status=?, sort_order=?, updated_at=?
-           WHERE id=?""",
+           WHERE id=? AND owner_id=?""",
         (
             body.name, body.description, tags_to_json(body.tags), body.link,
-            body.repo, body.status, body.sort_order, now_iso(), project_id,
+            body.repo, body.status, body.sort_order, now_iso(), project_id, owner_id,
         ),
     )
     if cur.rowcount == 0:
         raise HTTPException(404, "项目不存在")
-    row = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    row = conn.execute("SELECT * FROM projects WHERE id=? AND owner_id=?", (project_id, owner_id)).fetchone()
     return _serialize(row)
 
 
 @router.delete("/{project_id}", dependencies=[Depends(require_admin)])
-def delete_project(project_id: int, conn: sqlite3.Connection = Depends(get_db)):
-    cur = conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+def delete_project(project_id: int, owner_id: str = Depends(content_owner_id), conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.execute("DELETE FROM projects WHERE id=? AND owner_id=?", (project_id, owner_id))
     if cur.rowcount == 0:
         raise HTTPException(404, "项目不存在")
     return {"ok": True}

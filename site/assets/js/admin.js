@@ -40,13 +40,18 @@
   /* ---------- 模块定义 ---------- */
 
   const RATING_OPTIONS = [5, 4, 3, 2, 1].map((n) => [String(n), "★".repeat(n) + "☆".repeat(5 - n)]);
+  const POST_STATES = {
+    draft: "草稿", preview: "已预览", revision: "修订中",
+    published: "已发布", withdrawn: "已撤回",
+  };
 
   const MODULES = [
     {
       key: "posts", label: "博客", api: "/api/posts",
       listLine: (p) =>
         '<span class="title">' + G.esc(p.title) + "</span> " +
-        (p.status === "draft" ? '<span class="badge draft">草稿</span>' : '<span class="badge">已发布</span>') +
+        '<span class="badge ' + (p.status === "published" ? "" : "draft") + '">' +
+        G.esc(POST_STATES[p.status] || p.status) + "</span>" +
         '<div class="meta">' + G.fmtDate(p.published_at || p.created_at) +
         " · 阅读 " + p.views +
         (p.tags.length ? " · " + p.tags.map(G.esc).join(" / ") : "") + "</div>",
@@ -54,8 +59,8 @@
       fields: [
         { name: "title", label: "标题", type: "text", required: true },
         { name: "slug", label: "Slug（留空自动生成）", type: "text" },
-        { name: "status", label: "状态", type: "select", options: [["draft", "草稿"], ["published", "已发布"]] },
         { name: "tags", label: "标签（逗号分隔）", type: "tags" },
+        { name: "source_refs", label: "来源引用（每行一个 Archive / Travel 稳定引用）", type: "lines", full: true },
         { name: "summary", label: "摘要", type: "textarea", rows: 2, full: true },
         { name: "content_md", label: "正文（Markdown）", type: "md", full: true },
       ],
@@ -180,6 +185,10 @@
           '<div class="image-preview-grid" data-images-preview="' + f.name + '">' +
           imageValues.map((url) => '<img src="' + G.esc(url) + '" alt="相册预览">').join("") + "</div>";
         break;
+      case "lines":
+        control = '<textarea name="' + f.name + '" rows="3" placeholder="shadow://archive/records/…">' +
+          G.esc((v || []).join("\n")) + "</textarea>";
+        break;
       default:
         control = '<input type="text" name="' + f.name + '" value="' + G.esc(v) + '"' + req + ">";
     }
@@ -193,6 +202,7 @@
       let v = el.value;
       if (f.type === "tags") v = v.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
       else if (f.type === "images") v = v.split("\n").map((s) => s.trim()).filter(Boolean);
+      else if (f.type === "lines") v = v.split("\n").map((s) => s.trim()).filter(Boolean);
       else if (f.type === "number") v = parseInt(v || "0", 10);
       else if (f.toValue) v = f.toValue(v);
       data[f.name] = v;
@@ -352,8 +362,12 @@
     renderTabs();
     panel.innerHTML = '<p class="state-note">正在巡视花园…</p>';
     let data;
+    let suggestions = [];
     try {
-      data = await api("/api/editor/context");
+      [data, suggestions] = await Promise.all([
+        api("/api/editor/context"),
+        api("/api/editor/suggestions").then((value) => value.items).catch(() => []),
+      ]);
     } catch (e) {
       panel.innerHTML = '<p class="state-note error">加载失败：' + G.esc(e.message) + "</p>";
       return;
@@ -389,6 +403,12 @@
       '<button data-copy-prompt>“根据这些照片写一篇杭州游记，先存草稿”</button>' +
       '<button data-copy-prompt>“把这段开发记录整理成博客，不要直接发布”</button></div>' +
       '<small>Agent 可以新增和修改内容，但不能删除，也不能改项目与关于页。</small></section></div>' +
+      (suggestions.length ? '<section class="studio-card review-card"><div class="studio-card-head"><div>' +
+        '<span class="workspace-label">GENTLE REDISCOVERY</span><h3>想回看时再打开</h3></div></div>' +
+        '<div class="review-list">' + suggestions.map((item) =>
+          '<button class="review-item" data-suggestion-uri="' + G.esc(item.subject_uri) + '"><span><b>' +
+          G.esc(item.title) + '</b><small>' + G.esc(item.reason) + '</small></span><em>查看 →</em></button>'
+        ).join("") + '</div></section>' : "") +
       '<section class="quick-create"><div><span class="workspace-label">QUICK START</span><h3>自己动手种一篇</h3></div>' +
       '<div><button class="btn btn-primary" data-quick-new="posts">写博客</button>' +
       '<button class="btn btn-ghost" data-quick-new="moments">记日常</button>' +
@@ -398,11 +418,12 @@
 
   async function exportBackup() {
     try {
-      const data = await api("/api/export");
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const response = await fetch("/api/export", { credentials: "same-origin" });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const blob = await response.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "garden-export-" + new Date().toISOString().slice(0, 10) + ".json";
+      a.download = "garden-portable-" + new Date().toISOString().slice(0, 10) + ".zip";
       a.click();
       URL.revokeObjectURL(a.href);
       toast("备份已下载");
@@ -444,14 +465,22 @@
       '<form class="form-card" id="edit-form"><div class="form-grid">' +
       m.fields.map((f) => fieldHtml(f, full ? full[f.name] : undefined)).join("") +
       "</div>" +
+      (m.key === "posts" && full ? '<div class="md-preview prose" id="post-health" hidden></div>' : "") +
       '<div class="form-actions">' +
       '<button class="btn btn-primary" type="submit">保存</button>' +
+      (m.key === "posts" && full && ["draft", "revision"].includes(full.status)
+        ? '<button class="btn btn-ghost" type="button" data-post-action="preview">校验并预览</button>' : "") +
+      (m.key === "posts" && full && full.status === "preview"
+        ? '<button class="btn btn-primary" type="button" data-post-action="publish">发布当前预览</button>' : "") +
+      (m.key === "posts" && full && full.status === "published"
+        ? '<button class="btn btn-ghost" type="button" data-post-action="withdraw">撤回公开版本</button>' : "") +
       '<button class="btn btn-ghost" type="button" data-cancel>取消</button>' +
       "</div></form>";
 
     $("#edit-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const payload = collectForm(e.target, m.fields);
+      if (m.key === "posts" && full) payload.status = full.status;
       try {
         if (item) await api(m.api + "/" + full.id, "PUT", payload);
         else await api(m.api, "POST", payload);
@@ -459,6 +488,33 @@
         showList();
       } catch (err) {
         toast("保存失败：" + err.message, true);
+      }
+    });
+
+    const action = $("[data-post-action]");
+    if (action) action.addEventListener("click", async () => {
+      try {
+        const result = await api(
+          m.api + "/" + full.id + "/" + action.dataset.postAction,
+          "POST",
+          action.dataset.postAction === "preview" ? { check_external: null } : undefined
+        );
+        if (result.validation) {
+          const box = $("#post-health");
+          box.hidden = false;
+          box.innerHTML = '<b>' + (result.validation.valid ? "预览校验通过" : "预览校验未通过") + '</b>' +
+            (result.validation.issues.length ? '<ul>' + result.validation.issues.map((issue) =>
+              '<li>' + G.esc(issue.message) + ' <small>' + G.esc(issue.reference) + '</small></li>'
+            ).join("") + '</ul>' : '<p>站内链接、资源与来源引用均可用。</p>');
+          if (!result.validation.valid) return;
+          full = result.post;
+        } else {
+          full = result;
+        }
+        toast("文章状态已更新");
+        showForm(full);
+      } catch (err) {
+        toast("操作失败：" + err.message, true);
       }
     });
   }
@@ -544,6 +600,18 @@
         toast("示例指令已复制");
       } catch (err) {
         toast("复制失败，请手动选择", true);
+      }
+      return;
+    }
+    const suggestion = e.target.closest("[data-suggestion-uri]");
+    if (suggestion) {
+      const match = suggestion.dataset.suggestionUri.match(/\/posts\/(\d+)$/);
+      if (match) {
+        currentModule = MODULES.find((m) => m.key === "posts");
+        currentItems = (await api(currentModule.api)).items;
+        const post = currentItems.find((item) => item.id === Number(match[1]));
+        renderTabs();
+        if (post) showForm(post);
       }
       return;
     }

@@ -1,6 +1,7 @@
-"""Markdown 渲染与文本统计。内容只来自管理员本人，不做 HTML 消毒。"""
+"""Markdown rendering with an allow-list sanitizer for every authoring path."""
 import re
 
+import bleach
 import markdown
 
 _MD_EXTENSIONS = ["fenced_code", "tables", "sane_lists", "nl2br", "codehilite"]
@@ -8,7 +9,27 @@ _MD_CONFIG = {"codehilite": {"guess_lang": False, "css_class": "highlight"}}
 
 
 def render_markdown(text: str) -> str:
-    return markdown.markdown(text or "", extensions=_MD_EXTENSIONS, extension_configs=_MD_CONFIG)
+    rendered = markdown.markdown(
+        text or "", extensions=_MD_EXTENSIONS, extension_configs=_MD_CONFIG
+    )
+    tags = set(bleach.sanitizer.ALLOWED_TAGS) | {
+        "p", "pre", "code", "blockquote", "hr", "br", "h1", "h2", "h3",
+        "h4", "h5", "h6", "table", "thead", "tbody", "tr", "th", "td",
+        "img", "del", "div", "span",
+    }
+    attrs = {
+        **bleach.sanitizer.ALLOWED_ATTRIBUTES,
+        "a": ["href", "title", "rel"],
+        "img": ["src", "alt", "title", "width", "height"],
+        "code": ["class"], "div": ["class"], "span": ["class"],
+    }
+    return bleach.clean(
+        rendered,
+        tags=tags,
+        attributes=attrs,
+        protocols={"http", "https", "mailto"},
+        strip=True,
+    )
 
 
 _SLUG_STRIP = re.compile(r"[^a-z0-9一-鿿]+")

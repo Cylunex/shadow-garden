@@ -13,7 +13,7 @@ from ..assets import (
     create_public_image_upload,
     upload_public_image,
 )
-from ..auth import require_content_editor
+from ..auth import content_owner_id, require_content_editor
 from ..config import settings
 from ..db import get_db, now_iso
 
@@ -54,14 +54,15 @@ def _record_asset(
     original_filename: str,
     content_type: str,
     size_bytes: int,
+    owner_id: str,
 ) -> None:
     conn.execute(
         """INSERT INTO asset_files
-           (id, asset_id, version_id, reference_id, url, original_filename,
+           (id, owner_id, asset_id, version_id, reference_id, url, original_filename,
             content_type, size_bytes, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
-            record_id,
+            record_id, owner_id,
             uploaded.asset_id,
             uploaded.version_id,
             uploaded.reference_id,
@@ -84,7 +85,7 @@ def _upload_result(uploaded: GardenAssetUpload, size_bytes: int) -> dict[str, ob
 
 
 @router.post("/init", dependencies=[Depends(require_content_editor)], status_code=201)
-def initialize_direct_upload(body: UploadInit, response: Response, conn=Depends(get_db)):
+def initialize_direct_upload(body: UploadInit, response: Response, owner_id: str = Depends(content_owner_id), conn=Depends(get_db)):
     if settings.asset_mode != "platform":
         raise HTTPException(409, "当前存储模式不支持直传")
     filename, content_type = _validated_metadata(
@@ -106,11 +107,11 @@ def initialize_direct_upload(body: UploadInit, response: Response, conn=Depends(
     )
     conn.execute(
         """INSERT INTO asset_uploads_pending
-           (id, upload_session_id, original_filename, content_type, size_bytes,
+           (id, owner_id, upload_session_id, original_filename, content_type, size_bytes,
             status, expires_at, created_at)
-           VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)""",
         (
-            record_id,
+            record_id, owner_id,
             session.upload_session_id,
             filename,
             content_type,
@@ -128,9 +129,9 @@ def initialize_direct_upload(body: UploadInit, response: Response, conn=Depends(
 
 
 @router.post("/complete", dependencies=[Depends(require_content_editor)])
-def complete_direct_upload(body: UploadComplete, response: Response, conn=Depends(get_db)):
+def complete_direct_upload(body: UploadComplete, response: Response, owner_id: str = Depends(content_owner_id), conn=Depends(get_db)):
     row = conn.execute(
-        "SELECT * FROM asset_uploads_pending WHERE id = ?", (body.upload_id,)
+        "SELECT * FROM asset_uploads_pending WHERE id=? AND owner_id=?", (body.upload_id, owner_id)
     ).fetchone()
     if row is None:
         raise HTTPException(404, "上传会话不存在")
@@ -158,6 +159,7 @@ def complete_direct_upload(body: UploadComplete, response: Response, conn=Depend
         original_filename=row["original_filename"],
         content_type=row["content_type"],
         size_bytes=row["size_bytes"],
+        owner_id=owner_id,
     )
     completed_at = now_iso()
     conn.execute(
@@ -178,7 +180,7 @@ def complete_direct_upload(body: UploadComplete, response: Response, conn=Depend
 
 
 @router.post("", dependencies=[Depends(require_content_editor)], status_code=201)
-async def upload_image(file: UploadFile, conn=Depends(get_db)):
+async def upload_image(file: UploadFile, owner_id: str = Depends(content_owner_id), conn=Depends(get_db)):
     content = await file.read()
     filename, content_type = _validated_metadata(
         file.filename or "", file.content_type or "application/octet-stream", len(content)
@@ -203,9 +205,18 @@ async def upload_image(file: UploadFile, conn=Depends(get_db)):
             original_filename=filename,
             content_type=content_type,
             size_bytes=len(content),
+            owner_id=owner_id,
         )
         return _upload_result(uploaded, len(content))
 
+    signatures = {
+        "image/png": content.startswith(b"\x89PNG\r\n\x1a\n"),
+        "image/jpeg": content.startswith(b"\xff\xd8\xff"),
+        "image/gif": content.startswith((b"GIF87a", b"GIF89a")),
+        "image/webp": len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP",
+    }
+    if not signatures.get(content_type, False):
+        raise HTTPException(400, "图片内容与声明类型不匹配")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
     name = f"{stamp}-{secrets.token_hex(6)}{ext}"
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)

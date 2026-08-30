@@ -272,7 +272,11 @@ def test_post_lifecycle(client, admin_headers):
     assert len(client.get("/api/posts", params={"tag": "测试"}).json()["items"]) == 1
     assert client.get("/api/posts", params={"tag": "没有"}).json()["items"] == []
 
-    # 删除
+    # 公开内容先撤回再删除，撤回事实保留在审计事件里
+    assert client.delete(f"/api/posts/{post['id']}", headers=admin_headers).status_code == 409
+    assert client.post(
+        f"/api/posts/{post['id']}/withdraw", headers=admin_headers
+    ).status_code == 200
     assert client.delete(f"/api/posts/{post['id']}", headers=admin_headers).status_code == 200
     assert client.get(f"/api/posts/{post['slug']}").status_code == 404
 

@@ -78,7 +78,6 @@ components:
     ReviewCreate:
       type: object
       additionalProperties: false
-      additionalProperties: false
       required: [intent, summary, fields]
       properties:
         intent: { type: string, minLength: 1 }

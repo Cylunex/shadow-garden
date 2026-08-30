@@ -1,5 +1,6 @@
 """种子数据：python -m app.seed（在 server/ 目录）。只在对应表为空时插入。"""
-from .db import connect, init_db, now_iso, tags_to_json
+from .db import connect, now_iso, tags_to_json
+from .migrations import upgrade
 from .rendering import render_markdown
 
 POSTS = [
@@ -174,7 +175,7 @@ def _count(conn, table: str) -> int:
 
 
 def seed() -> None:
-    init_db()
+    upgrade()
     conn = connect()
     now = now_iso()
     try:

@@ -102,14 +102,16 @@ def test_feed_and_sitemap(client, admin_headers):
 
 
 def test_export_requires_admin_and_is_complete(client, admin_headers):
+    from app.portable import verify_portable_bundle
+
     assert client.get("/api/export").status_code == 401
 
     client.post("/api/moments", json={"content_md": "备份我"}, headers=admin_headers)
-    data = client.get("/api/export", headers=admin_headers).json()
-    assert {"posts", "projects", "food", "trips", "moments", "about", "asset_files"} <= set(
-        data
-    )
-    assert data["moments"][0]["content_md"] == "备份我"
+    response = client.get("/api/export", headers=admin_headers)
+    assert response.headers["content-type"] == "application/zip"
+    verification = verify_portable_bundle(response.content)
+    assert verification["isolated"] is True
+    assert verification["file_count"] >= 1
 
 
 def test_code_highlight_rendering(client, admin_headers):

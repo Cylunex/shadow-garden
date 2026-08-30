@@ -17,10 +17,17 @@ from shadow_sdk.confirmation import (
 )
 
 from ..agent import require_agent
+from ..auth import content_owner_id
 from ..config import settings
 from ..db import get_db, inserted_id, now_iso, tags_from_json, tags_to_json
 from ..rendering import render_markdown, slugify
-from .posts import _unique_slug
+from .posts import (
+    _event,
+    _snapshot,
+    _unique_slug,
+    preview_transition,
+    publish_transition,
+)
 
 router = APIRouter(prefix="/api/machine/v1/agent", tags=["machine-agent"])
 
@@ -44,7 +51,7 @@ def _authorization(value: str | None) -> str:
 
 
 def _request_id(request: Request) -> str:
-    return getattr(request.state, "request_id", "") or "garden-machine"
+    return request.state.operation_context.trace_id
 
 
 def _review_id(agent_id: str, idempotency_key: str) -> str:
@@ -77,7 +84,7 @@ def _review_envelope(
         "protocol": "shadow.review.v1",
         "review_id": review["id"],
         "reference": f"shadow://garden/reviews/{review['id']}",
-        "revision": 1,
+        "revision": post["revision"],
         "domain": "garden",
         "intent": review["intent"],
         "summary": post["summary"] or post["title"],
@@ -91,20 +98,22 @@ def _review_envelope(
         },
         "risk_level": "L3",
         "created_at": review["created_at"],
-        "source_refs": [],
+        "source_refs": json.loads(post["source_refs"] or "[]"),
         "trace_id": trace_id,
         "receipt": receipt,
         "replayed": replayed,
     }
 
 
-def _load_review(conn: sqlite3.Connection, review_id: str) -> tuple[Any, Any]:
+def _load_review(conn: sqlite3.Connection, review_id: str, owner_id: str) -> tuple[Any, Any]:
     review = conn.execute(
-        "SELECT * FROM garden_agent_reviews WHERE id = ?", (review_id,)
+        "SELECT * FROM garden_agent_reviews WHERE id=? AND owner_id=?", (review_id, owner_id)
     ).fetchone()
     if review is None:
         raise HTTPException(404, "Garden review not found")
-    post = conn.execute("SELECT * FROM posts WHERE id = ?", (review["post_id"],)).fetchone()
+    post = conn.execute(
+        "SELECT * FROM posts WHERE id=? AND owner_id=?", (review["post_id"], owner_id)
+    ).fetchone()
     if post is None:
         raise HTTPException(409, "Garden review has lost its post")
     return review, post
@@ -136,18 +145,19 @@ def _confirmation_verifier() -> ConfirmationVerifier:
 @router.get("/summary", operation_id="get_garden_agent_summary")
 def get_summary(
     authorization: str | None = Header(default=None),
+    owner_id: str = Depends(content_owner_id),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     require_agent(_authorization(authorization), scope="garden.summary.read")
     counts = {
         "published": conn.execute(
-            "SELECT COUNT(*) AS n FROM posts WHERE status = 'published'"
+            "SELECT COUNT(*) AS n FROM posts WHERE owner_id=? AND status='published'", (owner_id,)
         ).fetchone()["n"],
         "drafts": conn.execute(
-            "SELECT COUNT(*) AS n FROM posts WHERE status = 'draft'"
+            "SELECT COUNT(*) AS n FROM posts WHERE owner_id=? AND status IN ('draft','preview','revision')", (owner_id,)
         ).fetchone()["n"],
         "pendingReviews": conn.execute(
-            "SELECT COUNT(*) AS n FROM garden_agent_reviews WHERE status = 'pending'"
+            "SELECT COUNT(*) AS n FROM garden_agent_reviews WHERE owner_id=? AND status='pending'", (owner_id,)
         ).fetchone()["n"],
     }
     return {"status": "ready", "summary": "Garden 内容工作区已连接", "counts": counts}
@@ -159,18 +169,19 @@ def create_review(
     request: Request,
     authorization: str | None = Header(default=None),
     idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=200),
+    owner_id: str = Depends(content_owner_id),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     identity = require_agent(_authorization(authorization), scope="garden.posts.draft")
     review_id = _review_id(identity.agent_id, idempotency_key)
     request_hash = _request_hash(body)
     existing = conn.execute(
-        "SELECT * FROM garden_agent_reviews WHERE id = ?", (review_id,)
+        "SELECT * FROM garden_agent_reviews WHERE id=? AND owner_id=?", (review_id, owner_id)
     ).fetchone()
     if existing is not None:
         if existing["request_hash"] != request_hash:
             raise HTTPException(409, "Idempotency key was reused with different content")
-        _, post = _load_review(conn, review_id)
+        _, post = _load_review(conn, review_id, owner_id)
         return _review_envelope(
             existing, post, _request_id(request), replayed=True
         )
@@ -181,19 +192,26 @@ def create_review(
     content_md = str(fields.get("contentMd") or fields.get("content_md") or "")
     tags_value = fields.get("tags") or []
     tags = [str(item) for item in tags_value] if isinstance(tags_value, list) else []
+    field_refs = fields.get("sourceRefs") or fields.get("source_refs") or []
+    source_refs = [*body.source_refs]
+    if isinstance(field_refs, list):
+        source_refs.extend(str(item) for item in field_refs)
     wanted_slug = str(fields.get("slug") or "").strip() or slugify(title)
     now = now_iso()
     post_cursor = conn.execute(
-        """INSERT INTO posts (slug, title, summary, content_md, content_html,
-                              tags, status, published_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'draft', NULL, ?, ?) RETURNING id""",
+        """INSERT INTO posts
+           (owner_id,slug,title,summary,content_md,content_html,tags,status,published_at,
+            revision,previewed_revision,withdrawn_at,source_refs,validation_json,created_at,updated_at)
+           VALUES (?,?,?,?,?,?,?,'draft',NULL,1,NULL,NULL,?,'{}',?,?) RETURNING id""",
         (
-            _unique_slug(conn, wanted_slug, None),
+            owner_id,
+            _unique_slug(conn, owner_id, wanted_slug, None),
             title,
             summary,
             content_md,
             render_markdown(content_md),
             tags_to_json(tags),
+            json.dumps(list(dict.fromkeys(source_refs)), ensure_ascii=False),
             now,
             now,
         ),
@@ -201,11 +219,21 @@ def create_review(
     post_id = inserted_id(post_cursor)
     conn.execute(
         """INSERT INTO garden_agent_reviews
-           (id, post_id, agent_id, intent, request_hash, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)""",
-        (review_id, post_id, identity.agent_id, body.intent, request_hash, now, now),
+           (id, owner_id, post_id, agent_id, intent, request_hash, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)""",
+        (review_id, owner_id, post_id, identity.agent_id, body.intent, request_hash, now, now),
     )
-    review, post = _load_review(conn, review_id)
+    review, post = _load_review(conn, review_id, owner_id)
+    request.state.garden_actor_id = f"agent:{identity.agent_id}"
+    _snapshot(
+        conn, post, actor=request.state.garden_actor_id,
+        correlation_id=request.state.operation_context.correlation_id,
+    )
+    _event(
+        conn, post, from_state=None, to_state="draft", actor=request.state.garden_actor_id,
+        correlation_id=request.state.operation_context.correlation_id,
+        detail="idempotent Agent capture",
+    )
     return _review_envelope(review, post, _request_id(request))
 
 
@@ -213,17 +241,18 @@ def create_review(
 def list_reviews(
     request: Request,
     authorization: str | None = Header(default=None),
+    owner_id: str = Depends(content_owner_id),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     identity = require_agent(_authorization(authorization), scope="garden.posts.review")
     reviews = conn.execute(
         """SELECT * FROM garden_agent_reviews
-           WHERE agent_id = ? AND status = 'pending' ORDER BY created_at""",
-        (identity.agent_id,),
+           WHERE owner_id=? AND agent_id=? AND status='pending' ORDER BY created_at""",
+        (owner_id, identity.agent_id),
     ).fetchall()
     items = []
     for review in reviews:
-        _, post = _load_review(conn, review["id"])
+        _, post = _load_review(conn, review["id"], owner_id)
         items.append(_review_envelope(review, post, _request_id(request)))
     return {
         "protocol": "shadow.review.v1",
@@ -243,10 +272,12 @@ def commit_review(
     authorization: str | None = Header(default=None),
     idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=200),
     confirmation: str = Header(alias="X-Shadow-Confirmation"),
+    owner_id: str = Depends(content_owner_id),
     conn: sqlite3.Connection = Depends(get_db),
 ):
-    require_agent(_authorization(authorization), scope="garden.posts.publish")
-    review, post = _load_review(conn, review_id)
+    identity = require_agent(_authorization(authorization), scope="garden.posts.publish")
+    review, post = _load_review(conn, review_id, owner_id)
+    request.state.garden_actor_id = f"agent:{identity.agent_id}"
     binding = ConfirmationBinding(
         audience="garden",
         plugin_id="shadow-garden",
@@ -256,28 +287,27 @@ def commit_review(
         arguments={"review_id": review_id},
         resource_uri=f"shadow://garden/reviews/{review_id}",
     )
-    try:
-        _confirmation_verifier().verify_and_consume(
-            confirmation,
-            binding,
-            idempotency_key=idempotency_key,
-        )
-    except ConfirmationError as exc:
-        raise HTTPException(403, str(exc)) from exc
     if review["status"] == "rejected":
         raise HTTPException(409, "Rejected Garden review cannot be published")
     replayed = review["status"] == "published"
     if not replayed:
+        if post["status"] in {"draft", "revision"}:
+            post, validation = preview_transition(conn, post, request=request)
+            if not validation["valid"]:
+                raise HTTPException(409, {"code": "preview_failed", "validation": validation})
+        try:
+            _confirmation_verifier().verify_and_consume(
+                confirmation, binding, idempotency_key=idempotency_key
+            )
+        except ConfirmationError as exc:
+            raise HTTPException(403, str(exc)) from exc
+        post = publish_transition(conn, post, request=request)
         now = now_iso()
         conn.execute(
-            "UPDATE posts SET status = 'published', published_at = ?, updated_at = ? WHERE id = ?",
-            (post["published_at"] or now, now, post["id"]),
+            "UPDATE garden_agent_reviews SET status='published',updated_at=? WHERE id=? AND owner_id=?",
+            (now, review_id, owner_id),
         )
-        conn.execute(
-            "UPDATE garden_agent_reviews SET status = 'published', updated_at = ? WHERE id = ?",
-            (now, review_id),
-        )
-    review, post = _load_review(conn, review_id)
+    review, post = _load_review(conn, review_id, owner_id)
     return _review_envelope(
         review,
         post,
@@ -296,20 +326,22 @@ def reject_review(
     request: Request,
     authorization: str | None = Header(default=None),
     idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=200),
+    owner_id: str = Depends(content_owner_id),
     conn: sqlite3.Connection = Depends(get_db),
 ):
     del idempotency_key
-    require_agent(_authorization(authorization), scope="garden.posts.review")
-    review, post = _load_review(conn, review_id)
+    identity = require_agent(_authorization(authorization), scope="garden.posts.review")
+    review, post = _load_review(conn, review_id, owner_id)
+    request.state.garden_actor_id = f"agent:{identity.agent_id}"
     if review["status"] == "published":
         raise HTTPException(409, "Published Garden review cannot be rejected")
     replayed = review["status"] == "rejected"
     if not replayed:
         conn.execute(
-            "UPDATE garden_agent_reviews SET status = 'rejected', updated_at = ? WHERE id = ?",
-            (now_iso(), review_id),
+            "UPDATE garden_agent_reviews SET status='rejected',updated_at=? WHERE id=? AND owner_id=?",
+            (now_iso(), review_id, owner_id),
         )
-    review, post = _load_review(conn, review_id)
+    review, post = _load_review(conn, review_id, owner_id)
     return _review_envelope(
         review, post, _request_id(request), replayed=replayed
     )

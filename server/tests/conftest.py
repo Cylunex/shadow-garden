@@ -20,6 +20,10 @@ TABLES = (
     "asset_files",
     "asset_uploads_pending",
     "garden_agent_reviews",
+    "post_revisions",
+    "post_events",
+    "garden_suggestions",
+    "schema_migrations",
     "sessions",
 )
 
@@ -94,6 +98,10 @@ def client(tmp_path, monkeypatch):
         import redis
 
         redis.Redis.from_url(redis_url).flushdb()
+
+    from app.migrations import upgrade
+
+    upgrade()
 
     from app.main import app
     from app.oidc import reset_oidc_service
