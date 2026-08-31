@@ -29,13 +29,49 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def capability_refs(instance_id: str) -> list[str]:
+def capability_refs(
+    instance_id: str,
+    capability_ids: tuple[str, ...] = CAPABILITY_IDS,
+) -> list[str]:
     if not _ID.fullmatch(instance_id):
         raise ValueError("instance_id must use the Platform identifier format")
     return [
         f"shadow://capabilities/shadow-garden/{instance_id}/{capability_id}"
-        for capability_id in CAPABILITY_IDS
+        for capability_id in capability_ids
     ]
+
+
+def selected_capability_ids(
+    status_path: Path,
+    *,
+    deployment_id: str,
+    build_id: str,
+    instance_id: str,
+) -> tuple[str, ...]:
+    """Return only Garden capabilities selected by one exact Platform build."""
+
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValueError("capability status is unreadable") from exc
+    if not isinstance(status, dict):
+        raise ValueError("capability status must contain an object")
+    if status.get("protocol") != "shadow.capability-status.v1":
+        raise ValueError("capability status protocol is invalid")
+    if status.get("deployment_id") != deployment_id or status.get("build_id") != build_id:
+        raise ValueError("capability status does not match this deployment build")
+    selected = {
+        item.get("capability_id")
+        for item in status.get("capabilities", [])
+        if isinstance(item, dict)
+        and item.get("selected") is True
+        and item.get("plugin_id") == "shadow-garden"
+        and item.get("instance_id") == instance_id
+    }
+    result = tuple(capability_id for capability_id in CAPABILITY_IDS if capability_id in selected)
+    if not result:
+        raise ValueError("capability status selects no Garden capabilities")
+    return result
 
 
 def build_evidence(
@@ -45,6 +81,7 @@ def build_evidence(
     build_id: str,
     instance_id: str,
     context: OperationContext,
+    capability_ids: tuple[str, ...] = CAPABILITY_IDS,
 ) -> dict[str, Any]:
     if stage not in {"deployed", "observed"}:
         raise ValueError("Garden emits deployed or observed evidence; restore uses a restore drill")
@@ -91,7 +128,7 @@ def build_evidence(
                 "detail": f"Garden {stage} checks passed for migration {HEAD}",
                 "checks": checks,
             }
-            for reference in capability_refs(instance_id)
+            for reference in capability_refs(instance_id, capability_ids)
         ],
     }
 
@@ -111,6 +148,11 @@ def main() -> None:
         command.add_argument("--run-id")
         command.add_argument("--correlation-id")
         command.add_argument("--request-id")
+        command.add_argument(
+            "--capability-status",
+            type=Path,
+            help="limit evidence to capabilities selected by this exact Platform build",
+        )
     args = parser.parse_args()
     context = OperationContext.create(
         run_id=args.run_id,
@@ -122,17 +164,28 @@ def main() -> None:
         trace_id=hashlib.sha256((args.run_id or "garden").encode()).hexdigest()[:32],
         request_id=args.request_id or "request-garden-conformance",
     )
+    capability_ids = (
+        selected_capability_ids(
+            args.capability_status,
+            deployment_id=args.deployment_id,
+            build_id=args.build_id,
+            instance_id=args.instance_id,
+        )
+        if args.capability_status is not None
+        else CAPABILITY_IDS
+    )
     if args.command == "evidence":
         document = build_evidence(
             stage=args.stage, deployment_id=args.deployment_id, build_id=args.build_id,
-            instance_id=args.instance_id, context=context,
+            instance_id=args.instance_id, context=context, capability_ids=capability_ids,
         )
     else:
         bundle = args.bundle.read_bytes()
         verification = verify_portable_bundle(bundle)
         document = build_restore_drill(
             bundle=bundle, verification=verification, deployment_id=args.deployment_id,
-            build_id=args.build_id, capability_refs=capability_refs(args.instance_id),
+            build_id=args.build_id,
+            capability_refs=capability_refs(args.instance_id, capability_ids),
             correlation=context.as_dict(),
         )
     args.output.parent.mkdir(parents=True, exist_ok=True)
