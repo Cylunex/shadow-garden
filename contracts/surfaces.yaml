@@ -16,7 +16,7 @@ surfaces:
   - id: capture
     type: capture
     capability: garden.posts.draft
-    operation_id: create_nexus_garden_review
+    operation_id: execute_nexus_garden_command
     risk_level: L1
     intent_prefixes: [garden.post]
   - id: review

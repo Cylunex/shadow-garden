@@ -5,6 +5,16 @@ info:
 servers:
   - url: https://example.com
 paths:
+  /api/machine/v1/agent/nexus/commands:
+    post:
+      operationId: execute_nexus_garden_command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: Strict execution receipt for the saved private draft}
   /api/machine/v1/agent/summary:
     get:
       operationId: get_garden_agent_summary

@@ -40,6 +40,17 @@ capabilities:
     audience: garden
     scopes: [garden.posts.draft]
     tools:
+      - name: garden.posts.execute
+        transport: http
+        contract_ref: contracts/agent.openapi.yaml
+        operation_id: execute_nexus_garden_command
+        exposure: hidden
+        result_mode: reference
+        max_result_bytes: 16384
+        max_model_chars: 2400
+        timeout_ms: 15000
+        concurrency_safe: false
+        retry_policy: idempotent
       - name: garden.posts.draft
         transport: http
         contract_ref: contracts/agent.openapi.yaml
@@ -58,6 +69,13 @@ capabilities:
     reversible: true
     resource_grant_required: false
     idempotency_required: true
+    execution:
+      interaction: direct
+      effect_scope: private
+      reversibility: reversible
+      result_kind: draft
+      authorization_mode: current_intent
+      idempotency_window_seconds: 86400
   - id: garden.posts.review
     summary: 由 Nexus Host 列出或退回同一 Agent 创建的文章草稿
     audience: garden

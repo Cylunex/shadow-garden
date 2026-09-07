@@ -142,6 +142,42 @@ def test_garden_nexus_review_requires_signed_publish_confirmation(client, agent_
     assert client.get(f"/api/posts/{review['fields']['slug']}").status_code == 200
 
 
+def test_garden_nexus_command_saves_private_draft_without_review_page(
+    client, agent_headers
+):
+    command = {
+        "protocol": "shadow.command.v1",
+        "command_id": "cmd_garden_private_draft_0001",
+        "capability_ref": "shadow://capabilities/shadow-garden/garden-primary/garden.posts.draft",
+        "operation_id": "execute_nexus_garden_command",
+        "schema_version": 1,
+        "arguments": {
+            "intent": "garden.post",
+            "summary": "保存一篇私有草稿",
+            "fields": {"title": "私有草稿", "contentMd": "正文"},
+            "source_text": "保存草稿",
+            "source_refs": [],
+        },
+        "target_refs": [],
+        "source_refs": [],
+    }
+    first = client.post(
+        "/api/machine/v1/agent/nexus/commands", headers=agent_headers, json=command
+    )
+    replay = client.post(
+        "/api/machine/v1/agent/nexus/commands", headers=agent_headers, json=command
+    )
+    assert first.status_code == replay.status_code == 200
+    assert first.json()["status"] == "committed"
+    assert first.json()["result_kind"] == "draft"
+    assert first.json()["replayed"] is False
+    assert replay.json() == {**first.json(), "replayed": True}
+    assert first.json()["resource_ref"].startswith("shadow://garden/reviews/")
+    assert client.get(f"/api/posts/{first.json()['fields']['slug']}", headers=agent_headers).json()[
+        "status"
+    ] == "draft"
+
+
 def test_content_agent_context_and_partial_updates(client, agent_headers):
     created = client.post(
         "/api/posts",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
@@ -39,6 +39,19 @@ class NexusReviewCreate(BaseModel):
     summary: str = Field(min_length=1, max_length=500)
     fields: dict[str, Any] = Field(default_factory=dict)
     source_text: str = Field(default="", max_length=4000)
+    source_refs: list[str] = Field(default_factory=list, max_length=16)
+
+
+class NexusGardenCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    protocol: Literal["shadow.command.v1"]
+    command_id: str = Field(pattern=r"^cmd_[A-Za-z0-9_-]{8,128}$")
+    capability_ref: str = Field(pattern=r"^shadow://capabilities/.+/garden\.posts\.draft$")
+    operation_id: Literal["execute_nexus_garden_command"]
+    schema_version: Literal[1]
+    arguments: NexusReviewCreate
+    target_refs: list[str] = Field(default_factory=list, max_length=16)
     source_refs: list[str] = Field(default_factory=list, max_length=16)
 
 
@@ -235,6 +248,34 @@ def create_review(
         detail="idempotent Agent capture",
     )
     return _review_envelope(review, post, _request_id(request))
+
+
+@router.post("/nexus/commands", operation_id="execute_nexus_garden_command")
+def execute_nexus_garden_command(
+    command: NexusGardenCommand,
+    request: Request,
+    authorization: str | None = Header(default=None),
+    owner_id: str = Depends(content_owner_id),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    created = create_review(
+        command.arguments, request, authorization, command.command_id, owner_id, conn
+    )
+    fields = created["fields"]
+    return {
+        "protocol": "shadow.execution-result.v1",
+        "command_id": command.command_id,
+        "capability_ref": command.capability_ref,
+        "operation_id": command.operation_id,
+        "status": "committed",
+        "result_kind": "draft",
+        "resource_ref": created["reference"],
+        "receipt_ref": f"shadow://garden/operations/{command.command_id}",
+        "completed_at": created["created_at"],
+        "replayed": bool(created["replayed"]),
+        "summary": "文章草稿已保存。",
+        "fields": fields,
+    }
 
 
 @router.get("/nexus/reviews", operation_id="list_nexus_garden_reviews")
