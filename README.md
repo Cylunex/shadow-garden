@@ -37,3 +37,5 @@ python -m venv .venv
 ## 文档
 
 接口和项目结构以源码内 OpenAPI、迁移和测试为准；生产运维信息统一保存在仓库外。
+
+- [统一鉴权、Agent 与 Nexus 接入设计（目标方案，尚未实现）](docs/nexus-integration-design.md)
