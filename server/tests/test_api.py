@@ -167,7 +167,17 @@ def test_garden_nexus_command_saves_private_draft_without_review_page(
     replay = client.post(
         "/api/machine/v1/agent/nexus/commands", headers=agent_headers, json=command
     )
+    mismatched = client.post(
+        "/api/machine/v1/agent/nexus/commands",
+        headers=agent_headers,
+        json={
+            **command,
+            "command_id": "cmd_garden_wrong_intent_0001",
+            "arguments": {**command["arguments"], "intent": "garden.delete"},
+        },
+    )
     assert first.status_code == replay.status_code == 200
+    assert mismatched.status_code == 422
     assert first.json()["status"] == "committed"
     assert first.json()["result_kind"] == "draft"
     assert first.json()["replayed"] is False

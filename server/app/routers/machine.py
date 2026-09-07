@@ -35,7 +35,7 @@ router = APIRouter(prefix="/api/machine/v1/agent", tags=["machine-agent"])
 class NexusReviewCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    intent: str = Field(min_length=1, max_length=120)
+    intent: str = Field(pattern=r"^garden\.post(?:\.[A-Za-z0-9.-]{1,80})?$")
     summary: str = Field(min_length=1, max_length=500)
     fields: dict[str, Any] = Field(default_factory=dict)
     source_text: str = Field(default="", max_length=4000)
